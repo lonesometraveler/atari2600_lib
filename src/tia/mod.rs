@@ -298,21 +298,11 @@ impl TIA {
 
             let color = if self.in_late_reset() {
                 // During LRHB we apply extra HMOVE clocks
-                self.p0.apply_hmove();
-                self.p1.apply_hmove();
-                self.m0.apply_hmove();
-                self.m1.apply_hmove();
-                self.bl.apply_hmove();
-
+                self.apply_hmove_all();
                 DEFAULT_COLOR
             } else {
                 // Player, missile, and ball counters only get clocked on visible cycles
-                self.p0.clock();
-                self.p1.clock();
-                self.m0.clock();
-                self.m1.clock();
-                self.bl.clock();
-
+                self.clock_visible_components();
                 self.get_pixel_color() as usize
             };
 
@@ -320,11 +310,7 @@ impl TIA {
             self.pixels[x] = NTSC_PALETTE[color];
         } else {
             // During HBLANK we apply extra HMOVE clocks
-            self.p0.apply_hmove();
-            self.p1.apply_hmove();
-            self.m0.apply_hmove();
-            self.m1.apply_hmove();
-            self.bl.apply_hmove();
+            self.apply_hmove_all()
         }
 
         if clocked {
@@ -337,16 +323,29 @@ impl TIA {
                     self.wsync = false;
                     self.late_reset_hblank = false;
                 }
-
-                // Reset HBlank
-                RHB => {}
-
-                // Late Reset HBlank
-                LRHB => {}
-
+                RHB => { /* Reset HBlank */ }
+                LRHB => { /* Late Reset HBlank */ }
                 _ => {}
             }
         }
+    }
+
+    // Helper method to apply extra HMOVE clocks to all components
+    fn apply_hmove_all(&mut self) {
+        self.p0.apply_hmove();
+        self.p1.apply_hmove();
+        self.m0.apply_hmove();
+        self.m1.apply_hmove();
+        self.bl.apply_hmove();
+    }
+
+    // Helper method to clock player, missile, and ball counters on visible cycles
+    fn clock_visible_components(&mut self) {
+        self.p0.clock();
+        self.p1.clock();
+        self.m0.clock();
+        self.m1.clock();
+        self.bl.clock();
     }
 
     pub fn debug(&self) {
