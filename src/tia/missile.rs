@@ -8,21 +8,18 @@ use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
 pub struct Missile {
-    colors: Rc<RefCell<Colors>>,
-    sibling_player: PlayerType,
-
-    enabled: bool,
-    hmove_offset: u8,
-    nusiz: u8,
-    size: usize,
-    copies: u8,
-    ctr: Counter,
-
-    // Graphics Scan Counter
-    scan_counter: ScanCounter,
-
     init_delay: isize,
     graphic_size: isize,
+    colors: Rc<RefCell<Colors>>,
+    hmove_offset: u8,
+    ctr: Counter,
+    scan_counter: ScanCounter,
+    nusiz: usize,
+
+    enabled: bool,
+    size: usize,
+    copies: u8,
+    sibling_player: PlayerType,
 }
 
 impl Missile {
@@ -59,7 +56,7 @@ impl Missile {
     }
 
     pub fn set_nusiz(&mut self, val: u8) {
-        self.nusiz = val;
+        self.nusiz = val as usize;
         self.size = 1 << ((val & 0b0011_0000) >> 4);
         self.copies = val & 0x07;
     }

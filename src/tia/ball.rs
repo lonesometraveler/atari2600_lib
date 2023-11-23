@@ -6,24 +6,18 @@ use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 
 pub struct Ball {
+    init_delay: isize,
+    graphic_size: isize,
     colors: Rc<RefCell<Colors>>,
-
     hmove_offset: u8,
     ctr: Counter,
-
-    enabled: bool,
-    // The ball sizee from the CTRLPF register
+    scan_counter: ScanCounter,
     nusiz: usize,
 
+    enabled: bool,
     // The VDELBL register
     vdel: bool,
     old_value: bool,
-
-    // Graphics Scan Counter
-    scan_counter: ScanCounter,
-
-    init_delay: isize,
-    graphic_size: isize,
 }
 
 impl Ball {

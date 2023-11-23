@@ -7,28 +7,23 @@ use crate::tia::graphics::ScanCounter;
 use crate::tia::PlayerType;
 
 pub struct Player {
+    init_delay: isize,
+    graphic_size: isize,
     colors: Rc<RefCell<Colors>>,
-    player: PlayerType,
-
     hmove_offset: u8,
     ctr: Counter,
+    scan_counter: ScanCounter,
+    nusiz: usize,
 
     // The REFPx register, for rendering backwards
     horizontal_mirror: bool,
-    // The NUSIZx register
-    nusiz: usize,
     // The 8-bit graphic to draw
     graphic: u8,
-
     // The VDELPx register
     vdel: bool,
     old_value: u8,
 
-    // Graphics Scan Counter
-    scan_counter: ScanCounter,
-
-    init_delay: isize,
-    graphic_size: isize,
+    player: PlayerType,
 }
 
 impl Player {
