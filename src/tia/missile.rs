@@ -153,16 +153,16 @@ impl Missile {
     }
 
     pub fn get_color(&self) -> Option<u8> {
-        if let Some(true) = self.scan_counter.bit_value {
-            let color = match self.sibling_player {
-                PlayerType::Player0 => self.colors.borrow().colup0(),
-                PlayerType::Player1 => self.colors.borrow().colup1(),
-            };
-
-            return Some(color);
-        }
-
-        None
+        self.scan_counter.bit_value.and_then(|bit_value| {
+            if bit_value {
+                match self.sibling_player {
+                    PlayerType::Player0 => Some(self.colors.borrow().colup0()),
+                    PlayerType::Player1 => Some(self.colors.borrow().colup1()),
+                }
+            } else {
+                None
+            }
+        })
     }
 
     pub fn debug(&self) {

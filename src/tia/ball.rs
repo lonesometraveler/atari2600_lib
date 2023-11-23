@@ -148,10 +148,9 @@ impl Ball {
     }
 
     pub fn get_color(&self) -> Option<u8> {
-        if let Some(true) = self.scan_counter.bit_value {
-            return Some(self.colors.borrow().colupf());
-        }
-
-        None
+        self.scan_counter
+            .bit_value
+            .filter(|&bit| bit)
+            .map(|_| self.colors.borrow().colupf())
     }
 }
