@@ -50,9 +50,11 @@ impl Ball {
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v
     }
+
     pub fn set_hmove_value(&mut self, v: u8) {
         self.hmove_offset = v
     }
+
     pub fn set_vdel(&mut self, v: bool) {
         self.vdel = v
     }
@@ -62,9 +64,11 @@ impl Ball {
     pub fn set_nusiz(&mut self, size: usize) {
         self.nusiz = size
     }
+
     pub fn hmclr(&mut self) {
         self.hmove_offset = 0
     }
+
     pub fn reset(&mut self) {
         self.ctr.reset();
 
@@ -82,6 +86,7 @@ impl Ball {
     fn size(&self) -> usize {
         self.nusiz
     }
+
     fn pixel_bit(&self) -> bool {
         if self.vdel {
             self.old_value

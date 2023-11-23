@@ -70,27 +70,35 @@ impl Player {
     pub fn counter(&self) -> &Counter {
         &self.ctr
     }
+
     pub fn set_hmove_value(&mut self, v: u8) {
         self.hmove_offset = v
     }
+
     pub fn set_graphic(&mut self, graphic: u8) {
         self.graphic = graphic
     }
+
     pub fn set_horizontal_mirror(&mut self, reflect: bool) {
         self.horizontal_mirror = reflect
     }
+
     pub fn set_nusiz(&mut self, v: u8) {
         self.nusiz = v & 0x0f
     }
+
     pub fn set_vdel(&mut self, v: bool) {
         self.vdel = v
     }
+
     pub fn set_vdel_value(&mut self) {
         self.old_value = self.graphic
     }
+
     pub fn hmclr(&mut self) {
         self.hmove_offset = 0
     }
+
     pub fn reset(&mut self) {
         self.ctr.reset();
 

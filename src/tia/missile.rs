@@ -53,17 +53,21 @@ impl Missile {
     pub fn set_enabled(&mut self, en: bool) {
         self.enabled = en
     }
+
     pub fn set_hmove_value(&mut self, v: u8) {
         self.hmove_offset = v
     }
+
     pub fn set_nusiz(&mut self, val: u8) {
         self.nusiz = val;
         self.size = 1 << ((val & 0b0011_0000) >> 4);
         self.copies = val & 0x07;
     }
+
     pub fn hmclr(&mut self) {
         self.hmove_offset = 0
     }
+
     pub fn reset(&mut self) {
         self.ctr.reset();
 
@@ -81,6 +85,7 @@ impl Missile {
     fn size(&self) -> usize {
         self.size as usize
     }
+
     fn pixel_bit(&self) -> bool {
         self.enabled
     }
