@@ -16,7 +16,7 @@ pub struct Player {
     // The REFPx register, for rendering backwards
     horizontal_mirror: bool,
     // The NUSIZx register
-    nusiz: u8,
+    nusiz: usize,
     // The 8-bit graphic to draw
     graphic: u8,
 
@@ -83,7 +83,7 @@ impl Player {
         self.horizontal_mirror = reflect
     }
 
-    pub fn set_nusiz(&mut self, v: u8) {
+    pub fn set_nusiz(&mut self, v: usize) {
         self.nusiz = v & 0x0f
     }
 

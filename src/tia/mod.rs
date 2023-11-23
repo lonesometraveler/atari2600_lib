@@ -505,7 +505,7 @@ impl Bus for TIA {
                 let player_copies = val & 0b0000_0111;
 
                 self.m0.set_nusiz(val);
-                self.p0.set_nusiz(player_copies);
+                self.p0.set_nusiz(player_copies as usize);
             }
 
             // NUSIZ1  ..111111  number-size player-missile 1
@@ -513,7 +513,7 @@ impl Bus for TIA {
                 let player_copies = val & 0b0000_0111;
 
                 self.m1.set_nusiz(val);
-                self.p1.set_nusiz(player_copies);
+                self.p1.set_nusiz(player_copies as usize);
             }
 
             // REFP0   ....1...  reflect player 0
