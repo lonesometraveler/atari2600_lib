@@ -7,9 +7,6 @@ use crate::tia::graphics::ScanCounter;
 use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
-const INIT_DELAY: isize = 4;
-const GRAPHIC_SIZE: isize = 1;
-
 pub struct Missile {
     colors: Rc<RefCell<Colors>>,
     sibling_player: PlayerType,
@@ -23,10 +20,18 @@ pub struct Missile {
 
     // Graphics Scan Counter
     scan_counter: ScanCounter,
+
+    init_delay: isize,
+    graphic_size: isize,
 }
 
 impl Missile {
-    pub fn new(colors: Rc<RefCell<Colors>>, sibling_player: PlayerType) -> Self {
+    pub fn new(
+        colors: Rc<RefCell<Colors>>,
+        sibling_player: PlayerType,
+        init_delay: isize,
+        graphic_size: isize,
+    ) -> Self {
         Self {
             colors,
             sibling_player,
@@ -39,6 +44,9 @@ impl Missile {
             ctr: Counter::new(40, 39),
 
             scan_counter: ScanCounter::default(),
+
+            init_delay,
+            graphic_size,
         }
     }
 
@@ -60,7 +68,7 @@ impl Missile {
         self.ctr.reset();
 
         if self.should_draw_graphic() || self.should_draw_copy() {
-            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_idx = Some(-self.init_delay);
             self.scan_counter.bit_copies_written = 0;
         }
     }
@@ -88,7 +96,7 @@ impl Missile {
                     idx += 1;
                 }
 
-                if idx == GRAPHIC_SIZE {
+                if idx == self.graphic_size {
                     self.scan_counter.bit_idx = None;
                 } else {
                     self.scan_counter.bit_idx = Some(idx);
@@ -118,7 +126,7 @@ impl Missile {
         self.tick_graphic_circuit();
 
         if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_idx = Some(-self.init_delay);
             self.scan_counter.bit_copies_written = 0;
         }
     }
@@ -131,7 +139,7 @@ impl Missile {
         let (moved, counter_clocked) = self.ctr.apply_hmove(self.hmove_offset);
 
         if counter_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_idx = Some(-self.init_delay);
             self.scan_counter.bit_copies_written = 0;
         }
 

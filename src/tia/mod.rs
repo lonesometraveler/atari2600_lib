@@ -25,6 +25,15 @@ use log::debug;
 
 use self::palette::NTSC_PALETTE;
 
+const BALL_INIT_DELAY: isize = 4;
+const BALL_GRAPHIC_SIZE: isize = 1;
+const MISSILE_INIT_DELAY: isize = 4;
+const MISSILE_GRAPHIC_SIZE: isize = 1;
+// Player sprites start 1 tick later than other sprites
+const PLAYER_INIT_DELAY: isize = 5;
+// How many bits to a graphic
+const PLAYER_GRAPHIC_SIZE: isize = 8;
+
 #[derive(Debug)]
 pub enum PlayerType {
     Player0,
@@ -100,11 +109,31 @@ impl Default for TIA {
         let colors = Rc::new(RefCell::new(Colors::new()));
         let hsync_ctr = Counter::new(57, 0);
         let pf = Playfield::new(colors.clone());
-        let bl = Ball::new(colors.clone());
-        let m0 = Missile::new(colors.clone(), PlayerType::Player0);
-        let m1 = Missile::new(colors.clone(), PlayerType::Player1);
-        let p0 = Player::new(colors.clone(), PlayerType::Player0);
-        let p1 = Player::new(colors.clone(), PlayerType::Player1);
+        let bl = Ball::new(colors.clone(), BALL_INIT_DELAY, BALL_GRAPHIC_SIZE);
+        let m0 = Missile::new(
+            colors.clone(),
+            PlayerType::Player0,
+            MISSILE_INIT_DELAY,
+            MISSILE_GRAPHIC_SIZE,
+        );
+        let m1 = Missile::new(
+            colors.clone(),
+            PlayerType::Player1,
+            MISSILE_INIT_DELAY,
+            MISSILE_GRAPHIC_SIZE,
+        );
+        let p0 = Player::new(
+            colors.clone(),
+            PlayerType::Player0,
+            PLAYER_INIT_DELAY,
+            PLAYER_GRAPHIC_SIZE,
+        );
+        let p1 = Player::new(
+            colors.clone(),
+            PlayerType::Player1,
+            PLAYER_INIT_DELAY,
+            PLAYER_GRAPHIC_SIZE,
+        );
 
         Self {
             ctr: hsync_ctr,
