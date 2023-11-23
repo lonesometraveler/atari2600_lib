@@ -98,8 +98,7 @@ impl Player {
         self.ctr.reset();
 
         if self.should_draw_graphic() || self.should_draw_copy() {
-            self.scan_counter.bit_idx = Some(-self.init_delay);
-            self.scan_counter.bit_copies_written = 0;
+            self.reset_scan_counter();
         }
     }
 
@@ -167,17 +166,20 @@ impl Player {
         self.tick_graphic_circuit();
 
         if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.scan_counter.bit_idx = Some(-self.init_delay);
-            self.scan_counter.bit_copies_written = 0;
+            self.reset_scan_counter();
         }
+    }
+
+    fn reset_scan_counter(&mut self) {
+        self.scan_counter.bit_idx = Some(-self.init_delay);
+        self.scan_counter.bit_copies_written = 0;
     }
 
     pub fn apply_hmove(&mut self) {
         let (moved, counter_clocked) = self.ctr.apply_hmove(self.hmove_offset);
 
         if counter_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.scan_counter.bit_idx = Some(-self.init_delay);
-            self.scan_counter.bit_copies_written = 0;
+            self.reset_scan_counter();
         }
 
         if moved {
