@@ -14,7 +14,7 @@ pub struct Missile {
     enabled: bool,
     hmove_offset: u8,
     nusiz: u8,
-    size: u8,
+    size: usize,
     copies: u8,
     ctr: Counter,
 
@@ -83,7 +83,7 @@ impl Missile {
     }
 
     fn size(&self) -> usize {
-        self.size as usize
+        self.size
     }
 
     fn pixel_bit(&self) -> bool {
