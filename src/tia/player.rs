@@ -176,13 +176,13 @@ impl Player {
     }
 
     pub fn apply_hmove(&mut self) {
-        let (moved, counter_clocked) = self.ctr.apply_hmove(self.hmove_offset);
+        let result = self.ctr.apply_hmove(self.hmove_offset);
 
-        if counter_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
+        if result.is_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
             self.reset_scan_counter();
         }
 
-        if moved {
+        if result.movement_required {
             self.tick_graphic_circuit();
         }
     }
