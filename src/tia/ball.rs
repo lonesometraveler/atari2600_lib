@@ -58,9 +58,11 @@ impl Ball {
     pub fn set_vdel(&mut self, v: bool) {
         self.vdel = v
     }
+
     pub fn set_vdel_value(&mut self) {
         self.old_value = self.enabled
     }
+
     pub fn set_nusiz(&mut self, size: usize) {
         self.nusiz = size
     }
