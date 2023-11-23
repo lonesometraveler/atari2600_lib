@@ -1,6 +1,7 @@
 mod ball;
 mod color;
 mod counter;
+mod graphics;
 mod missile;
 mod palette;
 mod player;

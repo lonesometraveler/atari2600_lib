@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
+use crate::tia::graphics::ScanCounter;
 use crate::tia::PlayerType;
 
 // Player sprites start 1 tick later than other sprites
@@ -30,9 +31,7 @@ pub struct Player {
     old_value: u8,
 
     // Graphics Scan Counter
-    graphic_bit_idx: Option<isize>,
-    graphic_bit_copies_written: usize,
-    graphic_bit_value: Option<bool>,
+    scan_counter: ScanCounter,
 }
 
 impl Player {
@@ -51,9 +50,7 @@ impl Player {
             vdel: false,
             old_value: 0,
 
-            graphic_bit_idx: None,
-            graphic_bit_copies_written: 0,
-            graphic_bit_value: None,
+            scan_counter: ScanCounter::default(),
         }
     }
 
@@ -93,8 +90,8 @@ impl Player {
         self.ctr.reset();
 
         if self.should_draw_graphic() || self.should_draw_copy() {
-            self.graphic_bit_idx = Some(-INIT_DELAY);
-            self.graphic_bit_copies_written = 0;
+            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_copies_written = 0;
         }
     }
 
@@ -105,7 +102,7 @@ impl Player {
 
     // Based on current state, return whether or not we are rendering this sprite
     fn pixel_bit(&self) -> bool {
-        if let Some(x) = self.graphic_bit_idx {
+        if let Some(x) = self.scan_counter.bit_idx {
             let graphic = if self.vdel {
                 self.old_value
             } else {
@@ -123,26 +120,26 @@ impl Player {
     }
 
     fn tick_graphic_circuit(&mut self) {
-        if let Some(mut idx) = self.graphic_bit_idx {
+        if let Some(mut idx) = self.scan_counter.bit_idx {
             if (0..8).contains(&idx) {
-                self.graphic_bit_value = Some(self.pixel_bit());
+                self.scan_counter.bit_value = Some(self.pixel_bit());
 
-                self.graphic_bit_copies_written += 1;
-                if self.graphic_bit_copies_written == self.size() {
-                    self.graphic_bit_copies_written = 0;
+                self.scan_counter.bit_copies_written += 1;
+                if self.scan_counter.bit_copies_written == self.size() {
+                    self.scan_counter.bit_copies_written = 0;
                     idx += 1;
                 }
 
                 if idx == GRAPHIC_SIZE {
-                    self.graphic_bit_idx = None;
+                    self.scan_counter.bit_idx = None;
                 } else {
-                    self.graphic_bit_idx = Some(idx);
+                    self.scan_counter.bit_idx = Some(idx);
                 }
             } else {
-                self.graphic_bit_idx = Some(idx + 1);
+                self.scan_counter.bit_idx = Some(idx + 1);
             }
         } else {
-            self.graphic_bit_value = None;
+            self.scan_counter.bit_value = None;
         }
     }
 
@@ -162,8 +159,8 @@ impl Player {
         self.tick_graphic_circuit();
 
         if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.graphic_bit_idx = Some(-INIT_DELAY);
-            self.graphic_bit_copies_written = 0;
+            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_copies_written = 0;
         }
     }
 
@@ -171,8 +168,8 @@ impl Player {
         let (moved, counter_clocked) = self.ctr.apply_hmove(self.hmove_offset);
 
         if counter_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.graphic_bit_idx = Some(-INIT_DELAY);
-            self.graphic_bit_copies_written = 0;
+            self.scan_counter.bit_idx = Some(-INIT_DELAY);
+            self.scan_counter.bit_copies_written = 0;
         }
 
         if moved {
@@ -181,7 +178,7 @@ impl Player {
     }
 
     pub fn get_color(&self) -> Option<u8> {
-        if let Some(true) = self.graphic_bit_value {
+        if let Some(true) = self.scan_counter.bit_value {
             let color = match self.player {
                 PlayerType::Player0 => self.colors.borrow().colup0(),
                 PlayerType::Player1 => self.colors.borrow().colup1(),
@@ -203,7 +200,7 @@ impl Player {
                  self.player,
                  self.ctr.value(),
                  self.graphic,
-                 self.graphic_bit_value,
+                 self.scan_counter.bit_value,
                  self.horizontal_mirror,
                  self.nusiz,
                  self.vdel,
