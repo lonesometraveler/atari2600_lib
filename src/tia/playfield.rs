@@ -80,15 +80,11 @@ impl Playfield {
         let pf_x = ctr % 20;
 
         if ctr < 20 {
-            if self.pf[pf_x] {
-                if self.score_mode {
-                    self.graphic_bit_value = Some(self.colors.borrow().colup0())
-                } else {
-                    self.graphic_bit_value = Some(self.colors.borrow().colupf())
-                };
-            } else {
-                self.graphic_bit_value = None;
-            }
+            self.graphic_bit_value = match (self.pf[pf_x], self.score_mode) {
+                (true, true) => Some(self.colors.borrow().colup0()),
+                (true, false) => Some(self.colors.borrow().colupf()),
+                (false, _) => None,
+            };
         } else {
             // The playfield also makes up the right-most side of the
             // screen, optionally mirrored horizontally as denoted by the
@@ -99,15 +95,11 @@ impl Playfield {
                 pf_x
             };
 
-            if self.pf[idx] {
-                if self.score_mode {
-                    self.graphic_bit_value = Some(self.colors.borrow().colup1())
-                } else {
-                    self.graphic_bit_value = Some(self.colors.borrow().colupf())
-                };
-            } else {
-                self.graphic_bit_value = None;
-            }
+            self.graphic_bit_value = match (self.pf[idx], self.score_mode) {
+                (true, true) => Some(self.colors.borrow().colup1()),
+                (true, false) => Some(self.colors.borrow().colupf()),
+                (false, _) => None,
+            };
         }
     }
 
