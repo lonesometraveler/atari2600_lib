@@ -9,6 +9,8 @@ pub struct ScanCounter {
 /// TIA Object
 pub trait TiaObject {
     const MAX_COUNTER_VAL: u8 = 39;
+    const INIT_DELAY: isize;
+    const GRAPHIC_SIZE: isize;
 
     fn set_enabled(&mut self, v: bool);
     fn set_hmove_value(&mut self, v: u8);

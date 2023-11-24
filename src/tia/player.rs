@@ -6,8 +6,6 @@ use super::graphics::TiaObject;
 use super::ColorType;
 
 pub struct Player {
-    init_delay: isize,
-    graphic_size: isize,
     colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
@@ -26,6 +24,11 @@ pub struct Player {
 }
 
 impl TiaObject for Player {
+    // Player sprites start 1 tick later than other sprites
+    const INIT_DELAY: isize = 5;
+    // How many bits to a graphic
+    const GRAPHIC_SIZE: isize = 8;
+
     fn size(&self) -> usize {
         match self.nusiz & 0x0f {
             0b0101 => 2,
@@ -94,7 +97,7 @@ impl TiaObject for Player {
     }
 
     fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-self.init_delay);
+        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
         self.scan_counter.bit_copies_written = 0;
     }
 
@@ -128,7 +131,7 @@ impl TiaObject for Player {
     }
 
     fn graphic_size(&self) -> isize {
-        self.graphic_size
+        Self::GRAPHIC_SIZE
     }
 
     fn set_enabled(&mut self, _v: bool) {}
@@ -139,12 +142,7 @@ impl TiaObject for Player {
 }
 
 impl Player {
-    pub fn new(
-        colors: ColorType,
-        player: PlayerType,
-        init_delay: isize,
-        graphic_size: isize,
-    ) -> Self {
+    pub fn new(colors: ColorType, player: PlayerType) -> Self {
         Self {
             colors,
             player,
@@ -160,9 +158,6 @@ impl Player {
             old_value: 0,
 
             scan_counter: ScanCounter::default(),
-
-            init_delay,
-            graphic_size,
         }
     }
 

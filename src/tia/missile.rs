@@ -7,8 +7,6 @@ use super::graphics::TiaObject;
 use super::ColorType;
 
 pub struct Missile {
-    init_delay: isize,
-    graphic_size: isize,
     colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
@@ -22,6 +20,9 @@ pub struct Missile {
 }
 
 impl TiaObject for Missile {
+    const INIT_DELAY: isize = 4;
+    const GRAPHIC_SIZE: isize = 1;
+
     fn set_enabled(&mut self, en: bool) {
         self.enabled = en
     }
@@ -79,7 +80,7 @@ impl TiaObject for Missile {
     }
 
     fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-self.init_delay);
+        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
         self.scan_counter.bit_copies_written = 0;
     }
 
@@ -113,7 +114,7 @@ impl TiaObject for Missile {
     }
 
     fn graphic_size(&self) -> isize {
-        self.graphic_size
+        Self::GRAPHIC_SIZE
     }
 
     fn counter_value(&self) -> u8 {
@@ -122,12 +123,7 @@ impl TiaObject for Missile {
 }
 
 impl Missile {
-    pub fn new(
-        colors: ColorType,
-        sibling_player: PlayerType,
-        init_delay: isize,
-        graphic_size: isize,
-    ) -> Self {
+    pub fn new(colors: ColorType, sibling_player: PlayerType) -> Self {
         Self {
             colors,
             sibling_player,
@@ -140,9 +136,6 @@ impl Missile {
             ctr: Counter::new(40, 39),
 
             scan_counter: ScanCounter::default(),
-
-            init_delay,
-            graphic_size,
         }
     }
 

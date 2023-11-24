@@ -5,8 +5,6 @@ use super::graphics::TiaObject;
 use super::ColorType;
 
 pub struct Ball {
-    init_delay: isize,
-    graphic_size: isize,
     colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
@@ -20,6 +18,9 @@ pub struct Ball {
 }
 
 impl TiaObject for Ball {
+    const INIT_DELAY: isize = 4;
+    const GRAPHIC_SIZE: isize = 1;
+
     fn set_enabled(&mut self, v: bool) {
         self.enabled = v
     }
@@ -93,7 +94,7 @@ impl TiaObject for Ball {
     }
 
     fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-self.init_delay);
+        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
         self.scan_counter.bit_copies_written = 0;
     }
 
@@ -102,7 +103,7 @@ impl TiaObject for Ball {
     }
 
     fn graphic_size(&self) -> isize {
-        self.graphic_size
+        Self::GRAPHIC_SIZE
     }
 
     fn counter_value(&self) -> u8 {
@@ -111,7 +112,7 @@ impl TiaObject for Ball {
 }
 
 impl Ball {
-    pub fn new(colors: ColorType, init_delay: isize, graphic_size: isize) -> Self {
+    pub fn new(colors: ColorType) -> Self {
         Self {
             colors,
 
@@ -125,9 +126,6 @@ impl Ball {
             old_value: false,
 
             scan_counter: ScanCounter::default(),
-
-            init_delay,
-            graphic_size,
         }
     }
 
