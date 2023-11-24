@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
@@ -8,11 +5,12 @@ use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
 use super::graphics::TiaObject;
+use super::ColorType;
 
 pub struct Missile {
     init_delay: isize,
     graphic_size: isize,
-    colors: Rc<RefCell<Colors>>,
+    colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -126,7 +124,7 @@ impl TiaObject for Missile {
 
 impl Missile {
     pub fn new(
-        colors: Rc<RefCell<Colors>>,
+        colors: ColorType,
         sibling_player: PlayerType,
         init_delay: isize,
         graphic_size: isize,

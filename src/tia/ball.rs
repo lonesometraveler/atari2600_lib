@@ -6,11 +6,12 @@ use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 
 use super::graphics::TiaObject;
+use super::ColorType;
 
 pub struct Ball {
     init_delay: isize,
     graphic_size: isize,
-    colors: Rc<RefCell<Colors>>,
+    colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -114,7 +115,7 @@ impl TiaObject for Ball {
 }
 
 impl Ball {
-    pub fn new(colors: Rc<RefCell<Colors>>, init_delay: isize, graphic_size: isize) -> Self {
+    pub fn new(colors: ColorType, init_delay: isize, graphic_size: isize) -> Self {
         Self {
             colors,
 

@@ -1,17 +1,15 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 use crate::tia::PlayerType;
 
 use super::graphics::TiaObject;
+use super::ColorType;
 
 pub struct Player {
     init_delay: isize,
     graphic_size: isize,
-    colors: Rc<RefCell<Colors>>,
+    colors: ColorType,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -143,7 +141,7 @@ impl TiaObject for Player {
 
 impl Player {
     pub fn new(
-        colors: Rc<RefCell<Colors>>,
+        colors: ColorType,
         player: PlayerType,
         init_delay: isize,
         graphic_size: isize,
