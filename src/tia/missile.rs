@@ -61,10 +61,6 @@ impl TiaObject for Missile {
         self.enabled
     }
 
-    fn should_draw_graphic(&self) -> bool {
-        self.ctr.value() == 39
-    }
-
     fn should_draw_copy(&self) -> bool {
         let count = self.ctr.value();
 
@@ -118,6 +114,10 @@ impl TiaObject for Missile {
 
     fn graphic_size(&self) -> isize {
         self.graphic_size
+    }
+
+    fn counter_value(&self) -> u8 {
+        self.ctr.value()
     }
 }
 

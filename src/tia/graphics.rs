@@ -6,7 +6,10 @@ pub struct ScanCounter {
     pub bit_value: Option<bool>,
 }
 
+/// TIA Object
 pub trait TiaObject {
+    const MAX_COUNTER_VAL: u8 = 39;
+
     fn set_enabled(&mut self, v: bool);
     fn set_hmove_value(&mut self, v: u8);
     fn set_nusiz(&mut self, val: usize);
@@ -41,7 +44,9 @@ pub trait TiaObject {
         }
     }
 
-    fn should_draw_graphic(&self) -> bool;
+    fn should_draw_graphic(&self) -> bool {
+        self.counter_value() == Self::MAX_COUNTER_VAL
+    }
 
     fn should_draw_copy(&self) -> bool;
 
@@ -52,4 +57,5 @@ pub trait TiaObject {
     fn pixel_bit(&self) -> bool;
     fn size(&self) -> usize;
     fn graphic_size(&self) -> isize;
+    fn counter_value(&self) -> u8;
 }

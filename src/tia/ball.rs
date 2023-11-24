@@ -88,10 +88,6 @@ impl TiaObject for Ball {
             .map(|_| self.colors.borrow().colupf())
     }
 
-    fn should_draw_graphic(&self) -> bool {
-        self.ctr.value() == 39
-    }
-
     fn should_draw_copy(&self) -> bool {
         false
     }
@@ -107,6 +103,10 @@ impl TiaObject for Ball {
 
     fn graphic_size(&self) -> isize {
         self.graphic_size
+    }
+
+    fn counter_value(&self) -> u8 {
+        self.ctr.value()
     }
 }
 
