@@ -114,16 +114,13 @@ impl TiaObject for Player {
     }
 
     fn get_color(&self) -> Option<u8> {
-        self.scan_counter.bit_value.and_then(|bit_value| {
-            if bit_value {
-                match self.player {
-                    PlayerType::Player0 => Some(self.colors.borrow().colup0()),
-                    PlayerType::Player1 => Some(self.colors.borrow().colup1()),
-                }
-            } else {
-                None
-            }
-        })
+        self.scan_counter
+            .bit_value
+            .and_then(|bit_value| match (bit_value, &self.player) {
+                (true, PlayerType::Player0) => Some(self.colors.borrow().colup0()),
+                (true, PlayerType::Player1) => Some(self.colors.borrow().colup1()),
+                (false, _) => None,
+            })
     }
 
     fn scan_counter(&mut self) -> &mut ScanCounter {
