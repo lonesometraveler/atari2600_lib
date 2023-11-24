@@ -74,15 +74,12 @@ impl Counter {
             }
         }
 
-        self.internal_value += 1;
-        self.internal_value %= self.period * 4;
+        self.internal_value = (self.internal_value + 1) % (self.period * 4);
 
-        if self.last_value != self.value() {
-            self.last_value = self.value();
-            true
-        } else {
-            false
-        }
+        let clocked = self.last_value != self.value();
+        self.last_value = self.value();
+
+        clocked
     }
 
     pub fn start_hmove(&mut self, hm_val: u8) {
