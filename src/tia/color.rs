@@ -1,3 +1,4 @@
+#[derive(Default)]
 pub struct Colors {
     colup0: u8,
     colup1: u8,
@@ -7,12 +8,7 @@ pub struct Colors {
 
 impl Colors {
     pub fn new() -> Self {
-        Self {
-            colup0: 0,
-            colup1: 0,
-            colupf: 0,
-            colubk: 0,
-        }
+        Self::default()
     }
 
     pub fn set_colup0(&mut self, val: u8) {
