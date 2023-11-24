@@ -1,7 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 

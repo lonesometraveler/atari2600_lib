@@ -1,4 +1,3 @@
-use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 use crate::tia::PlayerType;
