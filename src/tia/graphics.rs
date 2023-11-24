@@ -22,6 +22,7 @@ pub trait TiaObject {
     // Setter for horizontal movement value
     fn set_hmove_value(&mut self, v: u8);
 
+    // TODO: verify this
     // Setter for the size of the ???
     fn set_nusiz(&mut self, val: usize);
 
@@ -93,6 +94,7 @@ pub trait TiaObject {
     // Method to get the pixel value for drawing
     fn pixel_bit(&self) -> bool;
 
+    // TODO: verify this
     // Method to get the size of the ???
     fn size(&self) -> usize;
 
