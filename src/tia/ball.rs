@@ -98,6 +98,19 @@ impl TiaObject for Ball {
     fn graphic_size(&self) -> isize {
         self.graphic_size
     }
+
+    fn should_draw_graphic(&self) -> bool {
+        self.ctr.value() == 39
+    }
+
+    fn should_draw_copy(&self) -> bool {
+        false
+    }
+
+    fn reset_scan_counter(&mut self) {
+        self.scan_counter.bit_idx = Some(-self.init_delay);
+        self.scan_counter.bit_copies_written = 0;
+    }
 }
 
 impl Ball {
@@ -127,18 +140,5 @@ impl Ball {
 
     pub fn set_vdel_value(&mut self) {
         self.old_value = self.enabled
-    }
-
-    fn should_draw_graphic(&self) -> bool {
-        self.ctr.value() == 39
-    }
-
-    fn should_draw_copy(&self) -> bool {
-        false
-    }
-
-    fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-self.init_delay);
-        self.scan_counter.bit_copies_written = 0;
     }
 }

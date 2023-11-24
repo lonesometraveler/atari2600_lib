@@ -41,6 +41,12 @@ pub trait TiaObject {
         }
     }
 
+    fn should_draw_graphic(&self) -> bool;
+
+    fn should_draw_copy(&self) -> bool;
+
+    fn reset_scan_counter(&mut self);
+
     // Add these abstract methods to the trait
     fn scan_counter(&mut self) -> &mut ScanCounter;
     fn pixel_bit(&self) -> bool;
