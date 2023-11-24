@@ -5,15 +5,21 @@ use super::graphics::TiaObject;
 use super::SharedColor;
 
 pub struct Ball {
+    // SharedColor is an alias for Rc<RefCell<Colors>> (used for shared ownership and interior mutability)
     colors: SharedColor,
+    // Horizontal movement offset
     hmove_offset: u8,
+    // Counter for managing horizontal movement and clock cycles
     ctr: Counter,
+    // Counter for managing the graphic scan
     scan_counter: ScanCounter,
+    // Size of the graphic (number of pixels to draw)
     nusiz: usize,
-
+    // Flag indicating whether the object is enabled for rendering
     enabled: bool,
-    // The VDELBL register
+    // VDELBL register flag for delayed vertical motion
     vdel: bool,
+    // Previous value of the pixel for delayed vertical motion
     old_value: bool,
 }
 
