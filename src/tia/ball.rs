@@ -91,14 +91,6 @@ impl TiaObject for Ball {
             .map(|_| self.colors.borrow().colupf())
     }
 
-    fn scan_counter(&mut self) -> &mut ScanCounter {
-        &mut self.scan_counter
-    }
-
-    fn graphic_size(&self) -> isize {
-        self.graphic_size
-    }
-
     fn should_draw_graphic(&self) -> bool {
         self.ctr.value() == 39
     }
@@ -110,6 +102,14 @@ impl TiaObject for Ball {
     fn reset_scan_counter(&mut self) {
         self.scan_counter.bit_idx = Some(-self.init_delay);
         self.scan_counter.bit_copies_written = 0;
+    }
+
+    fn scan_counter(&mut self) -> &mut ScanCounter {
+        &mut self.scan_counter
+    }
+
+    fn graphic_size(&self) -> isize {
+        self.graphic_size
     }
 }
 

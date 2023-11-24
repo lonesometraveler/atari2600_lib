@@ -507,7 +507,7 @@ impl Bus for TIA {
             0x0004 => {
                 let player_copies = val & 0b0000_0111;
 
-                self.m0.set_nusiz(val);
+                self.m0.set_nusiz(val as usize);
                 self.p0.set_nusiz(player_copies as usize);
             }
 
@@ -515,7 +515,7 @@ impl Bus for TIA {
             0x0005 => {
                 let player_copies = val & 0b0000_0111;
 
-                self.m1.set_nusiz(val);
+                self.m1.set_nusiz(val as usize);
                 self.p1.set_nusiz(player_copies as usize);
             }
 
