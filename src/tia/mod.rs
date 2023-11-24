@@ -1,6 +1,7 @@
 mod ball;
 mod color;
 mod counter;
+mod graphics;
 mod missile;
 mod palette;
 mod player;
@@ -15,6 +16,7 @@ use crate::bus::Bus;
 use crate::tia::ball::Ball;
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
+use crate::tia::graphics::TiaObject;
 use crate::tia::missile::Missile;
 use crate::tia::palette::DEFAULT_COLOR;
 use crate::tia::player::Player;
@@ -23,6 +25,8 @@ use crate::tia::playfield::Playfield;
 use log::debug;
 
 use self::palette::NTSC_PALETTE;
+
+pub type ColorType = Rc<RefCell<Colors>>;
 
 #[derive(Debug)]
 pub enum PlayerType {
@@ -298,21 +302,11 @@ impl TIA {
 
             let color = if self.in_late_reset() {
                 // During LRHB we apply extra HMOVE clocks
-                self.p0.apply_hmove();
-                self.p1.apply_hmove();
-                self.m0.apply_hmove();
-                self.m1.apply_hmove();
-                self.bl.apply_hmove();
-
+                self.apply_hmove_all();
                 DEFAULT_COLOR
             } else {
                 // Player, missile, and ball counters only get clocked on visible cycles
-                self.p0.clock();
-                self.p1.clock();
-                self.m0.clock();
-                self.m1.clock();
-                self.bl.clock();
-
+                self.clock_visible_components();
                 self.get_pixel_color() as usize
             };
 
@@ -320,11 +314,7 @@ impl TIA {
             self.pixels[x] = NTSC_PALETTE[color];
         } else {
             // During HBLANK we apply extra HMOVE clocks
-            self.p0.apply_hmove();
-            self.p1.apply_hmove();
-            self.m0.apply_hmove();
-            self.m1.apply_hmove();
-            self.bl.apply_hmove();
+            self.apply_hmove_all()
         }
 
         if clocked {
@@ -337,16 +327,29 @@ impl TIA {
                     self.wsync = false;
                     self.late_reset_hblank = false;
                 }
-
-                // Reset HBlank
-                RHB => {}
-
-                // Late Reset HBlank
-                LRHB => {}
-
+                RHB => { /* Reset HBlank */ }
+                LRHB => { /* Late Reset HBlank */ }
                 _ => {}
             }
         }
+    }
+
+    // Helper method to apply extra HMOVE clocks to all components
+    fn apply_hmove_all(&mut self) {
+        self.p0.apply_hmove();
+        self.p1.apply_hmove();
+        self.m0.apply_hmove();
+        self.m1.apply_hmove();
+        self.bl.apply_hmove();
+    }
+
+    // Helper method to clock player, missile, and ball counters on visible cycles
+    fn clock_visible_components(&mut self) {
+        self.p0.clock();
+        self.p1.clock();
+        self.m0.clock();
+        self.m1.clock();
+        self.bl.clock();
     }
 
     pub fn debug(&self) {
@@ -475,16 +478,16 @@ impl Bus for TIA {
             0x0004 => {
                 let player_copies = val & 0b0000_0111;
 
-                self.m0.set_nusiz(val);
-                self.p0.set_nusiz(player_copies);
+                self.m0.set_nusiz(val as usize);
+                self.p0.set_nusiz(player_copies as usize);
             }
 
             // NUSIZ1  ..111111  number-size player-missile 1
             0x0005 => {
                 let player_copies = val & 0b0000_0111;
 
-                self.m1.set_nusiz(val);
-                self.p1.set_nusiz(player_copies);
+                self.m1.set_nusiz(val as usize);
+                self.p1.set_nusiz(player_copies as usize);
             }
 
             // REFP0   ....1...  reflect player 0

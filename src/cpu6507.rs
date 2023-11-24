@@ -716,27 +716,33 @@ impl CPU6507 {
     }
 
     fn fetch_and_decode(&mut self) -> u64 {
+        // Read opcode from memory
         let opcode = self.read(self.pc);
+
+        // Get opcode information from the lookup table
         let op = &OPCODES[opcode as usize];
 
+        // Debug print if CPU6507_DEBUG is true
         if *CPU6507_DEBUG {
             self.debug(op);
         }
 
-        let &Opcode(ref inst, ref addr_mode, cycles, extra_cycles) = op;
+        // Destructure Opcode for better readability
+        let Opcode(inst, addr_mode, cycles, extra_cycles) = op;
+
+        // Get address and check for page crossing
         let (addr, page_crossed) = addr_mode.get_data(self);
 
+        // Update program counter
         self.pc += addr_mode.n_bytes() as u16;
+
+        // Update CPU state for debugging purposes
         self.current_instruction = Some(*inst);
         self.current_addr = addr;
         self.current_addr_mode = *addr_mode;
 
-        let mut new_cycles = cycles;
-        if page_crossed {
-            new_cycles += extra_cycles;
-        }
-
-        new_cycles
+        // Calculate total cycles, considering page crossing
+        cycles + if page_crossed { extra_cycles } else { &0 }
     }
 
     fn execute(&mut self) {

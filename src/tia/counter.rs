@@ -1,3 +1,11 @@
+/// Represents the result of applying horizontal movement.
+pub struct HMoveResult {
+    /// Indicates whether movement is required.
+    pub movement_required: bool,
+    /// Indicates whether the counter is clocked.
+    pub is_clocked: bool,
+}
+
 pub struct Counter {
     period: u8,
     reset_value: u8,
@@ -66,15 +74,12 @@ impl Counter {
             }
         }
 
-        self.internal_value += 1;
-        self.internal_value %= self.period * 4;
+        self.internal_value = (self.internal_value + 1) % (self.period * 4);
 
-        if self.last_value != self.value() {
-            self.last_value = self.value();
-            true
-        } else {
-            false
-        }
+        let clocked = self.last_value != self.value();
+        self.last_value = self.value();
+
+        clocked
     }
 
     pub fn start_hmove(&mut self, hm_val: u8) {
@@ -82,16 +87,22 @@ impl Counter {
         self.movement_required = hmove_value(hm_val) != 0;
     }
 
-    pub fn apply_hmove(&mut self, hm_val: u8) -> (bool, bool) {
+    pub fn apply_hmove(&mut self, hm_val: u8) -> HMoveResult {
         if !self.movement_required {
-            return (false, false);
+            return HMoveResult {
+                movement_required: false,
+                is_clocked: false,
+            };
         }
 
         let clocked = self.clock();
         self.ticks_added += 1;
         self.movement_required = self.ticks_added != hmove_value(hm_val);
 
-        (true, clocked)
+        HMoveResult {
+            movement_required: true,
+            is_clocked: clocked,
+        }
     }
 }
 
