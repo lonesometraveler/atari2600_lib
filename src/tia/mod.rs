@@ -16,6 +16,7 @@ use crate::bus::Bus;
 use crate::tia::ball::Ball;
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
+use crate::tia::graphics::TiaObject;
 use crate::tia::missile::Missile;
 use crate::tia::palette::DEFAULT_COLOR;
 use crate::tia::player::Player;
@@ -33,6 +34,8 @@ const MISSILE_GRAPHIC_SIZE: isize = 1;
 const PLAYER_INIT_DELAY: isize = 5;
 // How many bits to a graphic
 const PLAYER_GRAPHIC_SIZE: isize = 8;
+
+pub type ColorType = Rc<RefCell<Colors>>;
 
 #[derive(Debug)]
 pub enum PlayerType {

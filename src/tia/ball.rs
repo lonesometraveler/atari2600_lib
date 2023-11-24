@@ -5,6 +5,8 @@ use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 
+use super::graphics::TiaObject;
+
 pub struct Ball {
     init_delay: isize,
     graphic_size: isize,
@@ -18,6 +20,84 @@ pub struct Ball {
     // The VDELBL register
     vdel: bool,
     old_value: bool,
+}
+
+impl TiaObject for Ball {
+    fn set_enabled(&mut self, v: bool) {
+        self.enabled = v
+    }
+
+    fn set_hmove_value(&mut self, v: u8) {
+        self.hmove_offset = v
+    }
+
+    fn set_nusiz(&mut self, size: usize) {
+        self.nusiz = size
+    }
+
+    fn hmclr(&mut self) {
+        self.hmove_offset = 0
+    }
+
+    fn reset(&mut self) {
+        self.ctr.reset();
+
+        if self.should_draw_graphic() || self.should_draw_copy() {
+            self.reset_scan_counter();
+        }
+    }
+
+    fn start_hmove(&mut self) {
+        self.ctr.start_hmove(self.hmove_offset);
+        self.tick_graphic_circuit();
+    }
+
+    fn size(&self) -> usize {
+        self.nusiz
+    }
+
+    fn pixel_bit(&self) -> bool {
+        if self.vdel {
+            self.old_value
+        } else {
+            self.enabled
+        }
+    }
+
+    fn clock(&mut self) {
+        self.tick_graphic_circuit();
+
+        if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
+            self.reset_scan_counter();
+        }
+    }
+
+    fn apply_hmove(&mut self) {
+        let result = self.ctr.apply_hmove(self.hmove_offset);
+
+        if result.is_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
+            self.reset_scan_counter();
+        }
+
+        if result.movement_required {
+            self.tick_graphic_circuit();
+        }
+    }
+
+    fn get_color(&self) -> Option<u8> {
+        self.scan_counter
+            .bit_value
+            .filter(|&bit| bit)
+            .map(|_| self.colors.borrow().colupf())
+    }
+
+    fn scan_counter(&mut self) -> &mut ScanCounter {
+        &mut self.scan_counter
+    }
+
+    fn graphic_size(&self) -> isize {
+        self.graphic_size
+    }
 }
 
 impl Ball {
@@ -41,77 +121,12 @@ impl Ball {
         }
     }
 
-    pub fn set_enabled(&mut self, v: bool) {
-        self.enabled = v
-    }
-
-    pub fn set_hmove_value(&mut self, v: u8) {
-        self.hmove_offset = v
-    }
-
     pub fn set_vdel(&mut self, v: bool) {
         self.vdel = v
     }
 
     pub fn set_vdel_value(&mut self) {
         self.old_value = self.enabled
-    }
-
-    pub fn set_nusiz(&mut self, size: usize) {
-        self.nusiz = size
-    }
-
-    pub fn hmclr(&mut self) {
-        self.hmove_offset = 0
-    }
-
-    pub fn reset(&mut self) {
-        self.ctr.reset();
-
-        if self.should_draw_graphic() || self.should_draw_copy() {
-            self.reset_scan_counter();
-        }
-    }
-
-    pub fn start_hmove(&mut self) {
-        self.ctr.start_hmove(self.hmove_offset);
-        self.tick_graphic_circuit();
-    }
-
-    fn size(&self) -> usize {
-        self.nusiz
-    }
-
-    fn pixel_bit(&self) -> bool {
-        if self.vdel {
-            self.old_value
-        } else {
-            self.enabled
-        }
-    }
-
-    fn tick_graphic_circuit(&mut self) {
-        if let Some(mut idx) = self.scan_counter.bit_idx {
-            if (0..8).contains(&idx) {
-                self.scan_counter.bit_value = Some(self.pixel_bit());
-
-                self.scan_counter.bit_copies_written += 1;
-                if self.scan_counter.bit_copies_written == self.size() {
-                    self.scan_counter.bit_copies_written = 0;
-                    idx += 1;
-                }
-
-                if idx == self.graphic_size {
-                    self.scan_counter.bit_idx = None;
-                } else {
-                    self.scan_counter.bit_idx = Some(idx);
-                }
-            } else {
-                self.scan_counter.bit_idx = Some(idx + 1);
-            }
-        } else {
-            self.scan_counter.bit_value = None;
-        }
     }
 
     fn should_draw_graphic(&self) -> bool {
@@ -122,35 +137,8 @@ impl Ball {
         false
     }
 
-    pub fn clock(&mut self) {
-        self.tick_graphic_circuit();
-
-        if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-    }
-
     fn reset_scan_counter(&mut self) {
         self.scan_counter.bit_idx = Some(-self.init_delay);
         self.scan_counter.bit_copies_written = 0;
-    }
-
-    pub fn apply_hmove(&mut self) {
-        let result = self.ctr.apply_hmove(self.hmove_offset);
-
-        if result.is_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-
-        if result.movement_required {
-            self.tick_graphic_circuit();
-        }
-    }
-
-    pub fn get_color(&self) -> Option<u8> {
-        self.scan_counter
-            .bit_value
-            .filter(|&bit| bit)
-            .map(|_| self.colors.borrow().colupf())
     }
 }
