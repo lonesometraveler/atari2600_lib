@@ -2,10 +2,10 @@ use crate::tia::counter::Counter;
 use crate::tia::graphics::ScanCounter;
 
 use super::graphics::TiaObject;
-use super::ColorType;
+use super::SharedColor;
 
 pub struct Ball {
-    colors: ColorType,
+    colors: SharedColor,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -112,7 +112,7 @@ impl TiaObject for Ball {
 }
 
 impl Ball {
-    pub fn new(colors: ColorType) -> Self {
+    pub fn new(colors: SharedColor) -> Self {
         Self {
             colors,
 

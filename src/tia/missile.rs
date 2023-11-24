@@ -4,10 +4,10 @@ use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
 use super::graphics::TiaObject;
-use super::ColorType;
+use super::SharedColor;
 
 pub struct Missile {
-    colors: ColorType,
+    colors: SharedColor,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -120,7 +120,7 @@ impl TiaObject for Missile {
 }
 
 impl Missile {
-    pub fn new(colors: ColorType, sibling_player: PlayerType) -> Self {
+    pub fn new(colors: SharedColor, sibling_player: PlayerType) -> Self {
         Self {
             colors,
             sibling_player,

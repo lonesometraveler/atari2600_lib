@@ -3,10 +3,10 @@ use crate::tia::graphics::ScanCounter;
 use crate::tia::PlayerType;
 
 use super::graphics::TiaObject;
-use super::ColorType;
+use super::SharedColor;
 
 pub struct Player {
-    colors: ColorType,
+    colors: SharedColor,
     hmove_offset: u8,
     ctr: Counter,
     scan_counter: ScanCounter,
@@ -139,7 +139,7 @@ impl TiaObject for Player {
 }
 
 impl Player {
-    pub fn new(colors: ColorType, player: PlayerType) -> Self {
+    pub fn new(colors: SharedColor, player: PlayerType) -> Self {
         Self {
             colors,
             player,

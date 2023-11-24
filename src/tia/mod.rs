@@ -26,7 +26,7 @@ use log::debug;
 
 use self::palette::NTSC_PALETTE;
 
-pub type ColorType = Rc<RefCell<Colors>>;
+pub type SharedColor = Rc<RefCell<Colors>>;
 
 #[derive(Debug)]
 pub enum PlayerType {
