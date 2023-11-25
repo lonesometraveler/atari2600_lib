@@ -1,9 +1,9 @@
 /// Represents the result of applying horizontal movement.
 pub struct HMoveResult {
     /// Indicates whether movement is required.
-    pub movement_required: bool,
+    pub moved: bool,
     /// Indicates whether the counter is clocked.
-    pub is_clocked: bool,
+    pub clocked: bool,
 }
 
 pub struct Counter {
@@ -88,20 +88,20 @@ impl Counter {
     }
 
     pub fn apply_hmove(&mut self, hm_val: u8) -> HMoveResult {
-        if !self.movement_required {
-            return HMoveResult {
-                movement_required: false,
-                is_clocked: false,
-            };
-        }
+        if self.movement_required {
+            let clocked = self.clock();
+            self.ticks_added += 1;
+            self.movement_required = self.ticks_added != hmove_value(hm_val);
 
-        let clocked = self.clock();
-        self.ticks_added += 1;
-        self.movement_required = self.ticks_added != hmove_value(hm_val);
-
-        HMoveResult {
-            movement_required: true,
-            is_clocked: clocked,
+            HMoveResult {
+                moved: true,
+                clocked,
+            }
+        } else {
+            HMoveResult {
+                moved: false,
+                clocked: false,
+            }
         }
     }
 }
@@ -109,6 +109,70 @@ impl Counter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clock_without_reset_delay() {
+        let mut counter = Counter::new(40, 39);
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 1);
+        assert_eq!(counter.value(), 0);
+
+        // Increment internal value to 1
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 2);
+        assert_eq!(counter.value(), 0);
+
+        // Increment internal value to 2
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 3);
+        assert_eq!(counter.value(), 0);
+
+        // Increment internal value to 3
+        assert!(counter.clock());
+        assert_eq!(counter.internal_value, 4);
+        assert_eq!(counter.value(), 1);
+    }
+
+    #[test]
+    fn clock_with_reset_delay() {
+        let mut counter = Counter::new(40, 39);
+        counter.reset_to_h1();
+
+        assert!(!counter.clock()); // reset_delay = 7
+        assert_eq!(counter.internal_value, 1);
+
+        assert!(!counter.clock()); // reset_delay = 7
+        assert_eq!(counter.internal_value, 2);
+
+        // Increment internal value to 3, reset_delay = 6
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 3);
+
+        // Increment internal value to 4, reset_delay = 5
+        assert!(counter.clock());
+        assert_eq!(counter.internal_value, 4);
+
+        // Increment internal value to 5, reset_delay = 4
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 5);
+
+        // Increment internal value to 6, reset_delay = 3
+        assert!(!counter.clock());
+        // assert_eq!(counter.value(), 6);
+        assert_eq!(counter.internal_value, 6);
+
+        // Increment internal value to 7, reset_delay = 2
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 7);
+
+        // Increment internal value to 8, reset_delay = 1
+        assert!(counter.clock());
+        assert_eq!(counter.internal_value, 157);
+
+        // Increment internal value to 9, reset_delay = 0, perform reset
+        assert!(!counter.clock());
+        assert_eq!(counter.internal_value, 158);
+    }
 
     #[test]
     fn test_clocking() {

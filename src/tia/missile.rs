@@ -87,11 +87,11 @@ impl TiaObject for Missile {
     fn apply_hmove(&mut self) {
         let result = self.ctr.apply_hmove(self.hmove_offset);
 
-        if result.is_clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
+        if result.clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
             self.reset_scan_counter();
         }
 
-        if result.movement_required {
+        if result.moved {
             self.tick_graphic_circuit();
         }
     }

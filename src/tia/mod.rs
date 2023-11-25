@@ -83,7 +83,7 @@ pub struct TIA {
     cxblpf: u8,
     cxppmm: u8,
 
-    colors: Rc<RefCell<Colors>>,
+    colors: SharedColor,
 
     // Graphics
     pf: Playfield,
@@ -474,7 +474,7 @@ impl Bus for TIA {
             // Sprites
             //
 
-            // NUSIZ0  ..111111  number-size player-missile 0
+            // NUSIZ0  ..11.111  number-size player-missile 0
             0x0004 => {
                 let player_copies = val & 0b0000_0111;
 
@@ -482,7 +482,7 @@ impl Bus for TIA {
                 self.p0.set_nusiz(player_copies as usize);
             }
 
-            // NUSIZ1  ..111111  number-size player-missile 1
+            // NUSIZ1  ..11.111  number-size player-missile 1
             0x0005 => {
                 let player_copies = val & 0b0000_0111;
 
