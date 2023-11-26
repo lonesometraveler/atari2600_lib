@@ -27,7 +27,7 @@ impl Playfield {
     pub fn new(colors: Rc<RefCell<Colors>>) -> Self {
         Self {
             colors,
-            ctr: Counter::new(40, 39),
+            ctr: Counter::default(),
 
             pf0: 0,
             pf1: 0,

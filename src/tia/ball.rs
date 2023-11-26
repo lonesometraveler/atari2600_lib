@@ -123,7 +123,7 @@ impl Ball {
             colors,
 
             hmove_offset: 0,
-            ctr: Counter::new(40, 39),
+            ctr: Counter::default(),
 
             enabled: false,
             nusiz: 1,

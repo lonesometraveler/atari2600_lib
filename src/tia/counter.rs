@@ -6,6 +6,20 @@ pub struct HMoveResult {
     pub clocked: bool,
 }
 
+/// "Visible" counter value ranges from 0-39
+const PERIOD: u8 = 40;
+/// counter value ranges from 0-39 incrementing every 4 "ticks" from TIA (1/4 of TIA clock)
+/// (shift left (<<) are equivalent to multiply by 2^<shift>
+/// and shift right (>>) are equivalent to divide by 2^<shift>)
+const DIVIDER: u8 = 4;
+/// Value set when the TIA RESxx position is strobed
+const RESET_VALUE: u8 = 39;
+const INTERNAL_PERIOD: u8 = PERIOD * DIVIDER;
+
+/// Internal counters used by all TIA graphics to trigger drawing at appropriate time.
+/// Horizontal position is implicitly tracked by the counter value, and movement is
+/// implemented by making its cycle higher or lower than the current scanline.
+/// See: http://www.atarihq.com/danb/files/TIA_HW_Notes.txt
 pub struct Counter {
     period: u8,
     reset_value: u8,
@@ -17,13 +31,19 @@ pub struct Counter {
     movement_required: bool,
 }
 
-fn hmove_value(v: u8) -> u8 {
+fn ticks_to_add(v: u8) -> u8 {
     let nibble = v >> 4;
 
     if nibble < 8 {
         nibble + 8
     } else {
         nibble - 8
+    }
+}
+
+impl Default for Counter {
+    fn default() -> Self {
+        Self::new(PERIOD, RESET_VALUE)
     }
 }
 
@@ -42,11 +62,11 @@ impl Counter {
     }
 
     pub fn reset(&mut self) {
-        self.internal_value = self.reset_value * 4;
+        self.internal_value = self.reset_value * DIVIDER;
     }
 
     pub fn value(&self) -> u8 {
-        self.internal_value / 4
+        self.internal_value / DIVIDER
     }
 
     pub fn reset_to(&mut self, v: u8) {
@@ -58,7 +78,7 @@ impl Counter {
         //
         // > RSYNC resets the two-phase clock for the HSync counter to the
         // > H@1 rising edge when strobed.
-        self.internal_value = self.value() * 4;
+        self.internal_value = self.value() * DIVIDER;
 
         // A full H@1-H@2 cycle after RSYNC is strobed, the
         // HSync counter is also reset to 000000 and HBlank is turned on.
@@ -74,7 +94,7 @@ impl Counter {
             }
         }
 
-        self.internal_value = (self.internal_value + 1) % (self.period * 4);
+        self.internal_value = (self.internal_value + 1) % (self.period * DIVIDER);
 
         let clocked = self.last_value != self.value();
         self.last_value = self.value();
@@ -82,16 +102,24 @@ impl Counter {
         clocked
     }
 
+    /// Horizontal movement (HMOV) is implemented by extending the horizontal blank
+    /// by 8 pixels. That shortens the visible scanline to 152 pixels (producing the
+    /// "comb effect" on the left side) and pushes all graphics 8 pixels to the right...
     pub fn start_hmove(&mut self, hm_val: u8) {
         self.ticks_added = 0;
-        self.movement_required = hmove_value(hm_val) != 0;
+        self.movement_required = ticks_to_add(hm_val) != 0;
     }
 
+    /// ...but then TIA stuffs each counter with an extra cycle, counting those until
+    /// it reaches the current value for the HMMxx register for that graphic). Each
+    /// extra tick means pushing the graphic 1 pixel to the left, so the final movement
+    /// ends up being something betwen 8 pixels to the right (0 extra ticks) and
+    /// 7 pixels to the left (15 extra ticks)
     pub fn apply_hmove(&mut self, hm_val: u8) -> HMoveResult {
         if self.movement_required {
             let clocked = self.clock();
             self.ticks_added += 1;
-            self.movement_required = self.ticks_added != hmove_value(hm_val);
+            self.movement_required = self.ticks_added != ticks_to_add(hm_val);
 
             HMoveResult {
                 moved: true,
@@ -112,7 +140,7 @@ mod tests {
 
     #[test]
     fn clock_without_reset_delay() {
-        let mut counter = Counter::new(40, 39);
+        let mut counter = Counter::default();
         assert!(!counter.clock());
         assert_eq!(counter.internal_value, 1);
         assert_eq!(counter.value(), 0);
@@ -135,7 +163,7 @@ mod tests {
 
     #[test]
     fn clock_with_reset_delay() {
-        let mut counter = Counter::new(40, 39);
+        let mut counter = Counter::default();
         counter.reset_to_h1();
 
         assert!(!counter.clock()); // reset_delay = 7

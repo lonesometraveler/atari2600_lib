@@ -145,7 +145,7 @@ impl Player {
             player,
 
             hmove_offset: 0,
-            ctr: Counter::new(40, 39),
+            ctr: Counter::default(),
 
             horizontal_mirror: false,
             nusiz: 0,

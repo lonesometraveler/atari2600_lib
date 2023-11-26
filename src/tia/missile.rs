@@ -130,7 +130,7 @@ impl Missile {
             nusiz: 0,
             size: 0,
             copies: 0,
-            ctr: Counter::new(40, 39),
+            ctr: Counter::default(),
 
             scan_counter: ScanCounter::default(),
         }
