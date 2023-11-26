@@ -1,3 +1,5 @@
+use super::counter::Counter;
+
 // Graphics Scan Counter
 #[derive(Default)]
 pub struct ScanCounter {
@@ -35,7 +37,13 @@ pub trait TiaObject {
     fn start_hmove(&mut self);
 
     // Method called on each clock cycle
-    fn clock(&mut self);
+    fn clock(&mut self) {
+        self.tick_graphic_circuit();
+
+        if self.counter().clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
+            self.reset_scan_counter();
+        }
+    }
 
     // Method to apply horizontal movement
     fn apply_hmove(&mut self);
@@ -57,8 +65,8 @@ pub trait TiaObject {
         if let Some(mut idx) = self.scan_counter().bit_idx {
             if (0..8).contains(&idx) {
                 self.scan_counter().bit_value = Some(self.pixel_bit());
-
                 self.scan_counter().bit_copies_written += 1;
+
                 if self.scan_counter().bit_copies_written == self.size() {
                     self.scan_counter().bit_copies_written = 0;
                     idx += 1;
@@ -86,7 +94,10 @@ pub trait TiaObject {
     fn should_draw_copy(&self) -> bool;
 
     // Method to reset the scan counter
-    fn reset_scan_counter(&mut self);
+    fn reset_scan_counter(&mut self) {
+        self.scan_counter().bit_idx = Some(-Self::INIT_DELAY);
+        self.scan_counter().bit_copies_written = 0;
+    }
 
     // Method to get a mutable reference to the scan counter
     fn scan_counter(&mut self) -> &mut ScanCounter;
@@ -99,8 +110,13 @@ pub trait TiaObject {
     fn size(&self) -> usize;
 
     // Method to get the size of the graphic
-    fn graphic_size(&self) -> isize;
+    fn graphic_size(&self) -> isize {
+        Self::GRAPHIC_SIZE
+    }
 
     // Method to get the current value of the counter
     fn counter_value(&self) -> u8;
+
+    // Method to get a mutable reference to the counter
+    fn counter(&mut self) -> &mut Counter;
 }

@@ -71,19 +71,6 @@ impl TiaObject for Missile {
             || (count == 15 && (self.copies == 0b100 || self.copies == 0b110))
     }
 
-    fn clock(&mut self) {
-        self.tick_graphic_circuit();
-
-        if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-    }
-
-    fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
-        self.scan_counter.bit_copies_written = 0;
-    }
-
     fn apply_hmove(&mut self) {
         let result = self.ctr.apply_hmove(self.hmove_offset);
 
@@ -110,12 +97,12 @@ impl TiaObject for Missile {
         &mut self.scan_counter
     }
 
-    fn graphic_size(&self) -> isize {
-        Self::GRAPHIC_SIZE
-    }
-
     fn counter_value(&self) -> u8 {
         self.ctr.value()
+    }
+
+    fn counter(&mut self) -> &mut Counter {
+        &mut self.ctr
     }
 }
 
