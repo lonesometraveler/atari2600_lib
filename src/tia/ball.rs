@@ -23,6 +23,33 @@ pub struct Ball {
     old_value: bool,
 }
 
+impl Ball {
+    pub fn new(colors: SharedColor) -> Self {
+        Self {
+            colors,
+
+            hmove_offset: 0,
+            ctr: Counter::default(),
+
+            enabled: false,
+            nusiz: 1,
+
+            vdel: false,
+            old_value: false,
+
+            scan_counter: ScanCounter::default(),
+        }
+    }
+
+    pub fn set_vdel(&mut self, v: bool) {
+        self.vdel = v
+    }
+
+    pub fn set_vdel_value(&mut self) {
+        self.old_value = self.enabled
+    }
+}
+
 impl Graphic for Ball {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
@@ -80,32 +107,5 @@ impl Graphic for Ball {
 
     fn get_hmove_offset(&self) -> u8 {
         self.hmove_offset
-    }
-}
-
-impl Ball {
-    pub fn new(colors: SharedColor) -> Self {
-        Self {
-            colors,
-
-            hmove_offset: 0,
-            ctr: Counter::default(),
-
-            enabled: false,
-            nusiz: 1,
-
-            vdel: false,
-            old_value: false,
-
-            scan_counter: ScanCounter::default(),
-        }
-    }
-
-    pub fn set_vdel(&mut self, v: bool) {
-        self.vdel = v
-    }
-
-    pub fn set_vdel_value(&mut self) {
-        self.old_value = self.enabled
     }
 }

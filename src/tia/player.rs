@@ -23,6 +23,65 @@ pub struct Player {
     player: PlayerType,
 }
 
+impl Player {
+    pub fn new(colors: SharedColor, player: PlayerType) -> Self {
+        Self {
+            colors,
+            player,
+
+            hmove_offset: 0,
+            ctr: Counter::default(),
+
+            horizontal_mirror: false,
+            nusiz: 0,
+            graphic: 0,
+
+            vdel: false,
+            old_value: 0,
+
+            scan_counter: ScanCounter::default(),
+        }
+    }
+
+    pub fn counter(&self) -> &Counter {
+        &self.ctr
+    }
+
+    pub fn set_graphic(&mut self, graphic: u8) {
+        self.graphic = graphic
+    }
+
+    pub fn set_horizontal_mirror(&mut self, reflect: bool) {
+        self.horizontal_mirror = reflect
+    }
+
+    pub fn set_vdel(&mut self, v: bool) {
+        self.vdel = v
+    }
+
+    pub fn set_vdel_value(&mut self) {
+        self.old_value = self.graphic
+    }
+
+    #[allow(dead_code)]
+    pub fn debug(&self) {
+        if !self.should_draw_graphic() && !self.should_draw_copy() {
+            return;
+        }
+
+        println!("p: {:?}, ctr: {}, grp: {:08b}, gv: {:?}, refp: {}, nusiz: {:03b}, vdel: {}, old_value: {:08b}",
+                 self.player,
+                 self.ctr.value(),
+                 self.graphic,
+                 self.scan_counter.bit_value,
+                 self.horizontal_mirror,
+                 self.nusiz,
+                 self.vdel,
+                 self.old_value,
+        );
+    }
+}
+
 impl Graphic for Player {
     // Player sprites start 1 tick later than other sprites
     const INIT_DELAY: isize = 5;
@@ -101,64 +160,5 @@ impl Graphic for Player {
 
     fn get_hmove_offset(&self) -> u8 {
         self.hmove_offset
-    }
-}
-
-impl Player {
-    pub fn new(colors: SharedColor, player: PlayerType) -> Self {
-        Self {
-            colors,
-            player,
-
-            hmove_offset: 0,
-            ctr: Counter::default(),
-
-            horizontal_mirror: false,
-            nusiz: 0,
-            graphic: 0,
-
-            vdel: false,
-            old_value: 0,
-
-            scan_counter: ScanCounter::default(),
-        }
-    }
-
-    pub fn counter(&self) -> &Counter {
-        &self.ctr
-    }
-
-    pub fn set_graphic(&mut self, graphic: u8) {
-        self.graphic = graphic
-    }
-
-    pub fn set_horizontal_mirror(&mut self, reflect: bool) {
-        self.horizontal_mirror = reflect
-    }
-
-    pub fn set_vdel(&mut self, v: bool) {
-        self.vdel = v
-    }
-
-    pub fn set_vdel_value(&mut self) {
-        self.old_value = self.graphic
-    }
-
-    #[allow(dead_code)]
-    pub fn debug(&self) {
-        if !self.should_draw_graphic() && !self.should_draw_copy() {
-            return;
-        }
-
-        println!("p: {:?}, ctr: {}, grp: {:08b}, gv: {:?}, refp: {}, nusiz: {:03b}, vdel: {}, old_value: {:08b}",
-                 self.player,
-                 self.ctr.value(),
-                 self.graphic,
-                 self.scan_counter.bit_value,
-                 self.horizontal_mirror,
-                 self.nusiz,
-                 self.vdel,
-                 self.old_value,
-        );
     }
 }

@@ -19,6 +19,41 @@ pub struct Missile {
     sibling_player: PlayerType,
 }
 
+impl Missile {
+    pub fn new(colors: SharedColor, sibling_player: PlayerType) -> Self {
+        Self {
+            colors,
+            sibling_player,
+
+            enabled: false,
+            hmove_offset: 0,
+            nusiz: 0,
+            size: 0,
+            copies: 0,
+            ctr: Counter::default(),
+
+            scan_counter: ScanCounter::default(),
+        }
+    }
+
+    pub fn reset_to_player(&mut self, player: &Player) {
+        self.ctr.reset_to(player.counter().internal_value);
+    }
+
+    pub fn debug(&self) {
+        if !self.should_draw_graphic() && !self.should_draw_copy() {
+            return;
+        }
+
+        println!(
+            "ctr: {}, nusiz: {:03b}, gv: {:?}",
+            self.ctr.value(),
+            self.nusiz,
+            self.scan_counter.bit_value,
+        );
+    }
+}
+
 impl Graphic for Missile {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
@@ -82,40 +117,5 @@ impl Graphic for Missile {
 
     fn get_hmove_offset(&self) -> u8 {
         self.hmove_offset
-    }
-}
-
-impl Missile {
-    pub fn new(colors: SharedColor, sibling_player: PlayerType) -> Self {
-        Self {
-            colors,
-            sibling_player,
-
-            enabled: false,
-            hmove_offset: 0,
-            nusiz: 0,
-            size: 0,
-            copies: 0,
-            ctr: Counter::default(),
-
-            scan_counter: ScanCounter::default(),
-        }
-    }
-
-    pub fn reset_to_player(&mut self, player: &Player) {
-        self.ctr.reset_to(player.counter().internal_value);
-    }
-
-    pub fn debug(&self) {
-        if !self.should_draw_graphic() && !self.should_draw_copy() {
-            return;
-        }
-
-        println!(
-            "ctr: {}, nusiz: {:03b}, gv: {:?}",
-            self.ctr.value(),
-            self.nusiz,
-            self.scan_counter.bit_value,
-        );
     }
 }
