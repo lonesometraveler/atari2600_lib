@@ -1,9 +1,9 @@
 use crate::tia::counter::Counter;
-use crate::tia::graphics::ScanCounter;
+use crate::tia::graphic::ScanCounter;
 use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
-use super::graphics::TiaObject;
+use super::graphic::Graphic;
 use super::SharedColor;
 
 pub struct Missile {
@@ -19,7 +19,7 @@ pub struct Missile {
     sibling_player: PlayerType,
 }
 
-impl TiaObject for Missile {
+impl Graphic for Missile {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
 

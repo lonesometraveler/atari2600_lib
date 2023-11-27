@@ -1,7 +1,7 @@
 use crate::tia::counter::Counter;
-use crate::tia::graphics::ScanCounter;
+use crate::tia::graphic::ScanCounter;
 
-use super::graphics::TiaObject;
+use super::graphic::Graphic;
 use super::SharedColor;
 
 pub struct Ball {
@@ -23,7 +23,7 @@ pub struct Ball {
     old_value: bool,
 }
 
-impl TiaObject for Ball {
+impl Graphic for Ball {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
 

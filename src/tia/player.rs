@@ -1,8 +1,8 @@
 use crate::tia::counter::Counter;
-use crate::tia::graphics::ScanCounter;
+use crate::tia::graphic::ScanCounter;
 use crate::tia::PlayerType;
 
-use super::graphics::TiaObject;
+use super::graphic::Graphic;
 use super::SharedColor;
 
 pub struct Player {
@@ -23,7 +23,7 @@ pub struct Player {
     player: PlayerType,
 }
 
-impl TiaObject for Player {
+impl Graphic for Player {
     // Player sprites start 1 tick later than other sprites
     const INIT_DELAY: isize = 5;
     // How many bits to a graphic
@@ -71,9 +71,9 @@ impl TiaObject for Player {
             };
 
             if self.horizontal_mirror {
-                (graphic & (1 << x)) != 0
+                ((graphic >> x) & 1) != 0
             } else {
-                (graphic & (1 << (7 - x))) != 0
+                ((graphic >> (7 - x)) & 1) != 0
             }
         } else {
             false

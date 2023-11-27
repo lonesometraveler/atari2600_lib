@@ -4,6 +4,8 @@ use std::rc::Rc;
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
 
+use super::SharedColor;
+
 pub struct Playfield {
     colors: Rc<RefCell<Colors>>,
     ctr: Counter,
@@ -24,7 +26,7 @@ pub struct Playfield {
 }
 
 impl Playfield {
-    pub fn new(colors: Rc<RefCell<Colors>>) -> Self {
+    pub fn new(colors: SharedColor) -> Self {
         Self {
             colors,
             ctr: Counter::default(),
