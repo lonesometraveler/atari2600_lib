@@ -461,7 +461,7 @@ impl Bus for TIA {
             //
             // "RSYNC resets the two-phase clock for the HSync counter to the H@1
             // rising edge when strobed."
-            // 0x0003 => self.ctr.reset_to_h1(),
+            0x0003 => self.ctr.reset_to_h1(),
 
             //
             // Colors

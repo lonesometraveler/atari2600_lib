@@ -41,19 +41,6 @@ impl Graphic for Missile {
         self.hmove_offset = 0
     }
 
-    fn reset(&mut self) {
-        self.ctr.reset();
-
-        if self.should_draw_graphic() || self.should_draw_copy() {
-            self.reset_scan_counter();
-        }
-    }
-
-    fn start_hmove(&mut self) {
-        self.ctr.start_hmove(self.hmove_offset);
-        self.tick_graphic_circuit();
-    }
-
     fn size(&self) -> usize {
         self.size
     }
@@ -71,18 +58,6 @@ impl Graphic for Missile {
             || (count == 15 && (self.copies == 0b100 || self.copies == 0b110))
     }
 
-    fn apply_hmove(&mut self) {
-        let result = self.ctr.apply_hmove(self.hmove_offset);
-
-        if result.clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-
-        if result.moved {
-            self.tick_graphic_circuit();
-        }
-    }
-
     fn get_color(&self) -> Option<u8> {
         self.scan_counter
             .bit_value
@@ -93,16 +68,20 @@ impl Graphic for Missile {
             })
     }
 
-    fn scan_counter(&mut self) -> &mut ScanCounter {
+    fn get_scan_counter_mut(&mut self) -> &mut ScanCounter {
         &mut self.scan_counter
     }
 
-    fn counter_value(&self) -> u8 {
-        self.ctr.value()
+    fn get_counter(&self) -> &Counter {
+        &self.ctr
     }
 
-    fn counter(&mut self) -> &mut Counter {
+    fn get_counter_mut(&mut self) -> &mut Counter {
         &mut self.ctr
+    }
+
+    fn get_hmove_offset(&self) -> u8 {
+        self.hmove_offset
     }
 }
 

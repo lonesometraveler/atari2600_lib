@@ -31,22 +31,43 @@ pub trait Graphic {
     fn hmclr(&mut self);
 
     // Reset method for initializing the object
-    fn reset(&mut self);
+    fn reset(&mut self) {
+        self.get_counter_mut().reset();
+        if self.should_draw_graphic() || self.should_draw_copy() {
+            self.reset_scan_counter();
+        }
+    }
 
     // Method to start horizontal movement
-    fn start_hmove(&mut self);
+    fn start_hmove(&mut self) {
+        let hmove_offset = self.get_hmove_offset();
+        self.get_counter_mut().start_hmove(hmove_offset);
+        self.tick_graphic_circuit();
+    }
 
     // Method called on each clock cycle
     fn clock(&mut self) {
         self.tick_graphic_circuit();
 
-        if self.counter().clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
+        if self.get_counter_mut().clock() && (self.should_draw_graphic() || self.should_draw_copy())
+        {
             self.reset_scan_counter();
         }
     }
 
     // Method to apply horizontal movement
-    fn apply_hmove(&mut self);
+    fn apply_hmove(&mut self) {
+        let hmove_offset = self.get_hmove_offset();
+        let result = self.get_counter_mut().apply_hmove(hmove_offset);
+
+        if result.clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
+            self.reset_scan_counter();
+        }
+
+        if result.moved {
+            self.tick_graphic_circuit();
+        }
+    }
 
     // Method to get the color of the pixel
     fn get_color(&self) -> Option<u8>;
@@ -62,32 +83,32 @@ pub trait Graphic {
     /// - If the end of the graphic is reached, the bit index is set to `None`.
     /// - If the scan counter is inactive, the bit value is set to `None`.
     fn tick_graphic_circuit(&mut self) {
-        if let Some(mut idx) = self.scan_counter().bit_idx {
+        if let Some(mut idx) = self.get_scan_counter_mut().bit_idx {
             if (0..8).contains(&idx) {
-                self.scan_counter().bit_value = Some(self.pixel_bit());
-                self.scan_counter().bit_copies_written += 1;
+                self.get_scan_counter_mut().bit_value = Some(self.pixel_bit());
+                self.get_scan_counter_mut().bit_copies_written += 1;
 
-                if self.scan_counter().bit_copies_written == self.size() {
-                    self.scan_counter().bit_copies_written = 0;
+                if self.get_scan_counter_mut().bit_copies_written == self.size() {
+                    self.get_scan_counter_mut().bit_copies_written = 0;
                     idx += 1;
                 }
 
-                self.scan_counter().bit_idx = if idx == self.graphic_size() {
+                self.get_scan_counter_mut().bit_idx = if idx == self.graphic_size() {
                     None
                 } else {
                     Some(idx)
                 };
             } else {
-                self.scan_counter().bit_idx = Some(idx + 1);
+                self.get_scan_counter_mut().bit_idx = Some(idx + 1);
             }
         } else {
-            self.scan_counter().bit_value = None;
+            self.get_scan_counter_mut().bit_value = None;
         }
     }
 
     // Method to determine whether a graphic should be drawn
     fn should_draw_graphic(&self) -> bool {
-        self.counter_value() == Self::MAX_COUNTER_VAL
+        self.get_counter().value() == Self::MAX_COUNTER_VAL
     }
 
     // Method to determine whether a copy of the graphic should be drawn
@@ -95,12 +116,12 @@ pub trait Graphic {
 
     // Method to reset the scan counter
     fn reset_scan_counter(&mut self) {
-        self.scan_counter().bit_idx = Some(-Self::INIT_DELAY);
-        self.scan_counter().bit_copies_written = 0;
+        self.get_scan_counter_mut().bit_idx = Some(-Self::INIT_DELAY);
+        self.get_scan_counter_mut().bit_copies_written = 0;
     }
 
     // Method to get a mutable reference to the scan counter
-    fn scan_counter(&mut self) -> &mut ScanCounter;
+    fn get_scan_counter_mut(&mut self) -> &mut ScanCounter;
 
     // Method to get the pixel value for drawing
     fn pixel_bit(&self) -> bool;
@@ -115,8 +136,13 @@ pub trait Graphic {
     }
 
     // Method to get the current value of the counter
-    fn counter_value(&self) -> u8;
+    // fn counter_value(&self) -> u8;
+
+    // Method to get a immutable reference to the counter
+    fn get_counter(&self) -> &Counter;
 
     // Method to get a mutable reference to the counter
-    fn counter(&mut self) -> &mut Counter;
+    fn get_counter_mut(&mut self) -> &mut Counter;
+
+    fn get_hmove_offset(&self) -> u8;
 }
