@@ -83,26 +83,28 @@ pub trait Graphic {
     /// - If the end of the graphic is reached, the bit index is set to `None`.
     /// - If the scan counter is inactive, the bit value is set to `None`.
     fn tick_graphic_circuit(&mut self) {
-        if let Some(mut idx) = self.get_scan_counter_mut().bit_idx {
-            if (0..8).contains(&idx) {
-                self.get_scan_counter_mut().bit_value = Some(self.pixel_bit());
-                self.get_scan_counter_mut().bit_copies_written += 1;
+        let pixel_bit = self.pixel_bit();
+        let size = self.size();
+        let graphic_size = self.graphic_size();
+        let scan_counter = self.get_scan_counter_mut();
 
-                if self.get_scan_counter_mut().bit_copies_written == self.size() {
-                    self.get_scan_counter_mut().bit_copies_written = 0;
-                    idx += 1;
-                }
-
-                self.get_scan_counter_mut().bit_idx = if idx == self.graphic_size() {
-                    None
-                } else {
-                    Some(idx)
-                };
-            } else {
-                self.get_scan_counter_mut().bit_idx = Some(idx + 1);
+        if let Some(mut idx) = scan_counter.bit_idx {
+            if !(0..8).contains(&idx) {
+                scan_counter.bit_idx = Some(idx + 1);
+                return;
             }
+
+            scan_counter.bit_value = Some(pixel_bit);
+            scan_counter.bit_copies_written += 1;
+
+            if scan_counter.bit_copies_written == size {
+                scan_counter.bit_copies_written = 0;
+                idx += 1;
+            }
+
+            scan_counter.bit_idx = if idx == graphic_size { None } else { Some(idx) };
         } else {
-            self.get_scan_counter_mut().bit_value = None;
+            scan_counter.bit_value = None;
         }
     }
 
