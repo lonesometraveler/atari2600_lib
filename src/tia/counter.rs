@@ -14,7 +14,6 @@ const PERIOD: u8 = 40;
 const DIVIDER: u8 = 4;
 /// Value set when the TIA RESxx position is strobed
 const RESET_VALUE: u8 = 39;
-const INTERNAL_PERIOD: u8 = PERIOD * DIVIDER;
 
 /// Internal counters used by all TIA graphics to trigger drawing at appropriate time.
 /// Horizontal position is implicitly tracked by the counter value, and movement is
@@ -166,38 +165,30 @@ mod tests {
         let mut counter = Counter::default();
         counter.reset_to_h1();
 
-        assert!(!counter.clock()); // reset_delay = 7
+        assert!(!counter.clock());
         assert_eq!(counter.internal_value, 1);
 
-        assert!(!counter.clock()); // reset_delay = 7
+        assert!(!counter.clock());
         assert_eq!(counter.internal_value, 2);
 
-        // Increment internal value to 3, reset_delay = 6
         assert!(!counter.clock());
         assert_eq!(counter.internal_value, 3);
 
-        // Increment internal value to 4, reset_delay = 5
         assert!(counter.clock());
         assert_eq!(counter.internal_value, 4);
 
-        // Increment internal value to 5, reset_delay = 4
         assert!(!counter.clock());
         assert_eq!(counter.internal_value, 5);
 
-        // Increment internal value to 6, reset_delay = 3
         assert!(!counter.clock());
-        // assert_eq!(counter.value(), 6);
         assert_eq!(counter.internal_value, 6);
 
-        // Increment internal value to 7, reset_delay = 2
         assert!(!counter.clock());
         assert_eq!(counter.internal_value, 7);
 
-        // Increment internal value to 8, reset_delay = 1
         assert!(counter.clock());
         assert_eq!(counter.internal_value, 157);
 
-        // Increment internal value to 9, reset_delay = 0, perform reset
         assert!(!counter.clock());
         assert_eq!(counter.internal_value, 158);
     }
