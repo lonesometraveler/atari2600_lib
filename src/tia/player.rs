@@ -63,6 +63,18 @@ impl Player {
         self.old_value = self.graphic
     }
 
+    pub fn set_hmove_value(&mut self, v: u8) {
+        self.hmove_offset = v
+    }
+
+    pub fn set_nusiz(&mut self, v: usize) {
+        self.nusiz = v & 0x0f
+    }
+
+    pub fn hmclr(&mut self) {
+        self.hmove_offset = 0
+    }
+
     #[allow(dead_code)]
     pub fn debug(&self) {
         if !self.should_draw_graphic() && !self.should_draw_copy() {
@@ -94,18 +106,6 @@ impl Graphic for Player {
             0b0111 => 4,
             _ => 1,
         }
-    }
-
-    fn set_hmove_value(&mut self, v: u8) {
-        self.hmove_offset = v
-    }
-
-    fn set_nusiz(&mut self, v: usize) {
-        self.nusiz = v & 0x0f
-    }
-
-    fn hmclr(&mut self) {
-        self.hmove_offset = 0
     }
 
     fn pixel_bit(&self) -> bool {
@@ -147,8 +147,6 @@ impl Graphic for Player {
     fn get_scan_counter_mut(&mut self) -> &mut ScanCounter {
         &mut self.scan_counter
     }
-
-    fn set_enabled(&mut self, _v: bool) {}
 
     fn get_counter(&self) -> &Counter {
         &self.ctr

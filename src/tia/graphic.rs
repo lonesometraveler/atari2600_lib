@@ -18,18 +18,6 @@ pub trait Graphic {
     // Size of the graphic (number of pixels to draw)
     const GRAPHIC_SIZE: isize;
 
-    // Setter for enabling/disabling the object
-    fn set_enabled(&mut self, v: bool);
-
-    // Setter for horizontal movement value
-    fn set_hmove_value(&mut self, v: u8);
-
-    // TODO: verify this
-    // Setter for the size of the ???
-    fn set_nusiz(&mut self, val: usize);
-
-    fn hmclr(&mut self);
-
     // Reset method for initializing the object
     fn reset(&mut self) {
         self.get_counter_mut().reset();

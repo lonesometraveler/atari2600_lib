@@ -41,6 +41,10 @@ impl Ball {
         }
     }
 
+    pub fn set_enabled(&mut self, v: bool) {
+        self.enabled = v
+    }
+
     pub fn set_vdel(&mut self, v: bool) {
         self.vdel = v
     }
@@ -48,27 +52,23 @@ impl Ball {
     pub fn set_vdel_value(&mut self) {
         self.old_value = self.enabled
     }
+
+    pub fn set_hmove_value(&mut self, v: u8) {
+        self.hmove_offset = v
+    }
+
+    pub fn set_nusiz(&mut self, size: usize) {
+        self.nusiz = size
+    }
+
+    pub fn hmclr(&mut self) {
+        self.hmove_offset = 0
+    }
 }
 
 impl Graphic for Ball {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
-
-    fn set_enabled(&mut self, v: bool) {
-        self.enabled = v
-    }
-
-    fn set_hmove_value(&mut self, v: u8) {
-        self.hmove_offset = v
-    }
-
-    fn set_nusiz(&mut self, size: usize) {
-        self.nusiz = size
-    }
-
-    fn hmclr(&mut self) {
-        self.hmove_offset = 0
-    }
 
     fn size(&self) -> usize {
         self.nusiz

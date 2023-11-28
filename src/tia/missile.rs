@@ -36,6 +36,24 @@ impl Missile {
         }
     }
 
+    pub fn set_enabled(&mut self, en: bool) {
+        self.enabled = en
+    }
+
+    pub fn set_hmove_value(&mut self, v: u8) {
+        self.hmove_offset = v
+    }
+
+    pub fn set_nusiz(&mut self, val: usize) {
+        self.nusiz = val;
+        self.size = 1 << ((val & 0b0011_0000) >> 4);
+        self.copies = val as u8 & 0x07;
+    }
+
+    pub fn hmclr(&mut self) {
+        self.hmove_offset = 0
+    }
+
     pub fn reset_to_player(&mut self, player: &Player) {
         self.ctr.reset_to(player.counter().internal_value);
     }
@@ -57,24 +75,6 @@ impl Missile {
 impl Graphic for Missile {
     const INIT_DELAY: isize = 4;
     const GRAPHIC_SIZE: isize = 1;
-
-    fn set_enabled(&mut self, en: bool) {
-        self.enabled = en
-    }
-
-    fn set_hmove_value(&mut self, v: u8) {
-        self.hmove_offset = v
-    }
-
-    fn set_nusiz(&mut self, val: usize) {
-        self.nusiz = val;
-        self.size = 1 << ((val & 0b0011_0000) >> 4);
-        self.copies = val as u8 & 0x07;
-    }
-
-    fn hmclr(&mut self) {
-        self.hmove_offset = 0
-    }
 
     fn size(&self) -> usize {
         self.size
