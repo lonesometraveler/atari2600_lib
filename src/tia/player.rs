@@ -1,8 +1,8 @@
 use crate::tia::counter::Counter;
-use crate::tia::graphics::ScanCounter;
+use crate::tia::graphic::ScanCounter;
 use crate::tia::PlayerType;
 
-use super::graphics::TiaObject;
+use super::graphic::Graphic;
 use super::SharedColor;
 
 pub struct Player {
@@ -23,121 +23,6 @@ pub struct Player {
     player: PlayerType,
 }
 
-impl TiaObject for Player {
-    // Player sprites start 1 tick later than other sprites
-    const INIT_DELAY: isize = 5;
-    // How many bits to a graphic
-    const GRAPHIC_SIZE: isize = 8;
-
-    fn size(&self) -> usize {
-        match self.nusiz & 0x0f {
-            0b0101 => 2,
-            0b0111 => 4,
-            _ => 1,
-        }
-    }
-
-    fn set_hmove_value(&mut self, v: u8) {
-        self.hmove_offset = v
-    }
-
-    fn set_nusiz(&mut self, v: usize) {
-        self.nusiz = v & 0x0f
-    }
-
-    fn hmclr(&mut self) {
-        self.hmove_offset = 0
-    }
-
-    fn reset(&mut self) {
-        self.ctr.reset();
-
-        if self.should_draw_graphic() || self.should_draw_copy() {
-            self.reset_scan_counter();
-        }
-    }
-
-    fn start_hmove(&mut self) {
-        self.ctr.start_hmove(self.hmove_offset);
-        self.tick_graphic_circuit();
-    }
-
-    fn pixel_bit(&self) -> bool {
-        if let Some(x) = self.scan_counter.bit_idx {
-            let graphic = if self.vdel {
-                self.old_value
-            } else {
-                self.graphic
-            };
-
-            if self.horizontal_mirror {
-                (graphic & (1 << x)) != 0
-            } else {
-                (graphic & (1 << (7 - x))) != 0
-            }
-        } else {
-            false
-        }
-    }
-
-    fn should_draw_copy(&self) -> bool {
-        let count = self.ctr.value();
-
-        (count == 3 && (self.nusiz == 0b001 || self.nusiz == 0b011))
-            || (count == 7 && (self.nusiz == 0b010 || self.nusiz == 0b011 || self.nusiz == 0b110))
-            || (count == 15 && (self.nusiz == 0b100 || self.nusiz == 0b110))
-    }
-
-    fn clock(&mut self) {
-        self.tick_graphic_circuit();
-
-        if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-    }
-
-    fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
-        self.scan_counter.bit_copies_written = 0;
-    }
-
-    fn apply_hmove(&mut self) {
-        let result = self.ctr.apply_hmove(self.hmove_offset);
-
-        if result.clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-
-        if result.moved {
-            self.tick_graphic_circuit();
-        }
-    }
-
-    fn get_color(&self) -> Option<u8> {
-        self.scan_counter
-            .bit_value
-            .and_then(|bit_value| match (bit_value, &self.player) {
-                (true, PlayerType::Player0) => Some(self.colors.borrow().colup0()),
-                (true, PlayerType::Player1) => Some(self.colors.borrow().colup1()),
-                (false, _) => None,
-            })
-    }
-
-    fn scan_counter(&mut self) -> &mut ScanCounter {
-        &mut self.scan_counter
-    }
-
-    fn graphic_size(&self) -> isize {
-        Self::GRAPHIC_SIZE
-    }
-
-    fn set_enabled(&mut self, _v: bool) {}
-
-    fn counter_value(&self) -> u8 {
-        self.ctr.value()
-    }
-}
-
 impl Player {
     pub fn new(colors: SharedColor, player: PlayerType) -> Self {
         Self {
@@ -145,7 +30,7 @@ impl Player {
             player,
 
             hmove_offset: 0,
-            ctr: Counter::new(40, 39),
+            ctr: Counter::default(),
 
             horizontal_mirror: false,
             nusiz: 0,
@@ -178,6 +63,18 @@ impl Player {
         self.old_value = self.graphic
     }
 
+    pub fn set_hmove_value(&mut self, v: u8) {
+        self.hmove_offset = v
+    }
+
+    pub fn set_nusiz(&mut self, v: usize) {
+        self.nusiz = v & 0x0f
+    }
+
+    pub fn hmclr(&mut self) {
+        self.hmove_offset = 0
+    }
+
     #[allow(dead_code)]
     pub fn debug(&self) {
         if !self.should_draw_graphic() && !self.should_draw_copy() {
@@ -194,5 +91,72 @@ impl Player {
                  self.vdel,
                  self.old_value,
         );
+    }
+}
+
+impl Graphic for Player {
+    // Player sprites start 1 tick later than other sprites
+    const INIT_DELAY: isize = 5;
+    // How many bits to a graphic
+    const GRAPHIC_SIZE: isize = 8;
+
+    fn size(&self) -> usize {
+        match self.nusiz & 0x0f {
+            0b0101 => 2,
+            0b0111 => 4,
+            _ => 1,
+        }
+    }
+
+    fn pixel_bit(&self) -> bool {
+        if let Some(x) = self.scan_counter.bit_idx {
+            let graphic = if self.vdel {
+                self.old_value
+            } else {
+                self.graphic
+            };
+
+            if self.horizontal_mirror {
+                ((graphic >> x) & 1) != 0
+            } else {
+                ((graphic >> (7 - x)) & 1) != 0
+            }
+        } else {
+            false
+        }
+    }
+
+    fn should_draw_copy(&self) -> bool {
+        let count = self.ctr.value();
+
+        (count == 3 && (self.nusiz == 0b001 || self.nusiz == 0b011))
+            || (count == 7 && (self.nusiz == 0b010 || self.nusiz == 0b011 || self.nusiz == 0b110))
+            || (count == 15 && (self.nusiz == 0b100 || self.nusiz == 0b110))
+    }
+
+    fn get_color(&self) -> Option<u8> {
+        self.scan_counter
+            .bit_value
+            .and_then(|bit_value| match (bit_value, &self.player) {
+                (true, PlayerType::Player0) => Some(self.colors.borrow().colup0()),
+                (true, PlayerType::Player1) => Some(self.colors.borrow().colup1()),
+                (false, _) => None,
+            })
+    }
+
+    fn get_scan_counter_mut(&mut self) -> &mut ScanCounter {
+        &mut self.scan_counter
+    }
+
+    fn get_counter(&self) -> &Counter {
+        &self.ctr
+    }
+
+    fn get_counter_mut(&mut self) -> &mut Counter {
+        &mut self.ctr
+    }
+
+    fn get_hmove_offset(&self) -> u8 {
+        self.hmove_offset
     }
 }

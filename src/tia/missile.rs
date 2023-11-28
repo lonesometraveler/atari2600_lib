@@ -1,9 +1,9 @@
 use crate::tia::counter::Counter;
-use crate::tia::graphics::ScanCounter;
+use crate::tia::graphic::ScanCounter;
 use crate::tia::player::Player;
 use crate::tia::PlayerType;
 
-use super::graphics::TiaObject;
+use super::graphic::Graphic;
 use super::SharedColor;
 
 pub struct Missile {
@@ -19,40 +19,62 @@ pub struct Missile {
     sibling_player: PlayerType,
 }
 
-impl TiaObject for Missile {
-    const INIT_DELAY: isize = 4;
-    const GRAPHIC_SIZE: isize = 1;
+impl Missile {
+    pub fn new(colors: SharedColor, sibling_player: PlayerType) -> Self {
+        Self {
+            colors,
+            sibling_player,
 
-    fn set_enabled(&mut self, en: bool) {
+            enabled: false,
+            hmove_offset: 0,
+            nusiz: 0,
+            size: 0,
+            copies: 0,
+            ctr: Counter::default(),
+
+            scan_counter: ScanCounter::default(),
+        }
+    }
+
+    pub fn set_enabled(&mut self, en: bool) {
         self.enabled = en
     }
 
-    fn set_hmove_value(&mut self, v: u8) {
+    pub fn set_hmove_value(&mut self, v: u8) {
         self.hmove_offset = v
     }
 
-    fn set_nusiz(&mut self, val: usize) {
+    pub fn set_nusiz(&mut self, val: usize) {
         self.nusiz = val;
         self.size = 1 << ((val & 0b0011_0000) >> 4);
         self.copies = val as u8 & 0x07;
     }
 
-    fn hmclr(&mut self) {
+    pub fn hmclr(&mut self) {
         self.hmove_offset = 0
     }
 
-    fn reset(&mut self) {
-        self.ctr.reset();
+    pub fn reset_to_player(&mut self, player: &Player) {
+        self.ctr.reset_to(player.counter().internal_value);
+    }
 
-        if self.should_draw_graphic() || self.should_draw_copy() {
-            self.reset_scan_counter();
+    pub fn debug(&self) {
+        if !self.should_draw_graphic() && !self.should_draw_copy() {
+            return;
         }
-    }
 
-    fn start_hmove(&mut self) {
-        self.ctr.start_hmove(self.hmove_offset);
-        self.tick_graphic_circuit();
+        println!(
+            "ctr: {}, nusiz: {:03b}, gv: {:?}",
+            self.ctr.value(),
+            self.nusiz,
+            self.scan_counter.bit_value,
+        );
     }
+}
+
+impl Graphic for Missile {
+    const INIT_DELAY: isize = 4;
+    const GRAPHIC_SIZE: isize = 1;
 
     fn size(&self) -> usize {
         self.size
@@ -71,31 +93,6 @@ impl TiaObject for Missile {
             || (count == 15 && (self.copies == 0b100 || self.copies == 0b110))
     }
 
-    fn clock(&mut self) {
-        self.tick_graphic_circuit();
-
-        if self.ctr.clock() && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-    }
-
-    fn reset_scan_counter(&mut self) {
-        self.scan_counter.bit_idx = Some(-Self::INIT_DELAY);
-        self.scan_counter.bit_copies_written = 0;
-    }
-
-    fn apply_hmove(&mut self) {
-        let result = self.ctr.apply_hmove(self.hmove_offset);
-
-        if result.clocked && (self.should_draw_graphic() || self.should_draw_copy()) {
-            self.reset_scan_counter();
-        }
-
-        if result.moved {
-            self.tick_graphic_circuit();
-        }
-    }
-
     fn get_color(&self) -> Option<u8> {
         self.scan_counter
             .bit_value
@@ -106,50 +103,19 @@ impl TiaObject for Missile {
             })
     }
 
-    fn scan_counter(&mut self) -> &mut ScanCounter {
+    fn get_scan_counter_mut(&mut self) -> &mut ScanCounter {
         &mut self.scan_counter
     }
 
-    fn graphic_size(&self) -> isize {
-        Self::GRAPHIC_SIZE
+    fn get_counter(&self) -> &Counter {
+        &self.ctr
     }
 
-    fn counter_value(&self) -> u8 {
-        self.ctr.value()
-    }
-}
-
-impl Missile {
-    pub fn new(colors: SharedColor, sibling_player: PlayerType) -> Self {
-        Self {
-            colors,
-            sibling_player,
-
-            enabled: false,
-            hmove_offset: 0,
-            nusiz: 0,
-            size: 0,
-            copies: 0,
-            ctr: Counter::new(40, 39),
-
-            scan_counter: ScanCounter::default(),
-        }
+    fn get_counter_mut(&mut self) -> &mut Counter {
+        &mut self.ctr
     }
 
-    pub fn reset_to_player(&mut self, player: &Player) {
-        self.ctr.reset_to(player.counter().internal_value);
-    }
-
-    pub fn debug(&self) {
-        if !self.should_draw_graphic() && !self.should_draw_copy() {
-            return;
-        }
-
-        println!(
-            "ctr: {}, nusiz: {:03b}, gv: {:?}",
-            self.ctr.value(),
-            self.nusiz,
-            self.scan_counter.bit_value,
-        );
+    fn get_hmove_offset(&self) -> u8 {
+        self.hmove_offset
     }
 }

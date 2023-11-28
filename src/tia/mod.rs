@@ -1,7 +1,7 @@
 mod ball;
 mod color;
 mod counter;
-mod graphics;
+mod graphic;
 mod missile;
 mod palette;
 mod player;
@@ -16,7 +16,7 @@ use crate::bus::Bus;
 use crate::tia::ball::Ball;
 use crate::tia::color::Colors;
 use crate::tia::counter::Counter;
-use crate::tia::graphics::TiaObject;
+use crate::tia::graphic::Graphic;
 use crate::tia::missile::Missile;
 use crate::tia::palette::DEFAULT_COLOR;
 use crate::tia::player::Player;
@@ -314,7 +314,7 @@ impl TIA {
             self.pixels[x] = NTSC_PALETTE[color];
         } else {
             // During HBLANK we apply extra HMOVE clocks
-            self.apply_hmove_all()
+            self.apply_hmove_all();
         }
 
         if clocked {
@@ -358,6 +358,29 @@ impl TIA {
         //self.m0.debug();
         self.m1.debug();
     }
+
+    // TODO: https://github.com/stella-emu/stella/blob/8fe2adf28affc0477ee91689edef3b90168cd3ce/src/emucore/tia/TIA.cxx#L1519
+    // fn apply_rsync(&mut self) {
+    //     const H_BLANK_CLOCKS: u8 = 68;
+    //     const H_CLOCKS: u8 = 228;
+    //     const H_PIXEL: u8 = 160;
+    //     let x = if self.ctr.value() > H_BLANK_CLOCKS {
+    //         self.ctr.value() - H_BLANK_CLOCKS
+    //     } else {
+    //         0
+    //     };
+
+    //     self.myHctrDelta = H_CLOCKS - 3 - self.ctr.value();
+
+    //     if self.myFrameManager.is_rendering() {
+    //         let start_index = (self.myFrameManager.get_y() * H_PIXEL + x) as usize;
+    //         let end_index = start_index + (H_PIXEL - x) as usize;
+
+    //         self.myBackBuffer[start_index..end_index].fill(0);
+    //     }
+
+    //     self.ctr.reset_to(H_CLOCKS - 3);
+    // }
 }
 
 impl Bus for TIA {
@@ -432,7 +455,12 @@ impl Bus for TIA {
             // WSYNC   <strobe>  wait for leading edge of horizontal blank
             0x0002 => self.wsync = true,
 
+            // TODO: comment this out fixes the frame shifted bown by 1 pixel
             // RSYNC   <strobe>  reset horizontal sync counter
+            // from TIA_HW_Notes.txt:
+            //
+            // "RSYNC resets the two-phase clock for the HSync counter to the H@1
+            // rising edge when strobed."
             0x0003 => self.ctr.reset_to_h1(),
 
             //
