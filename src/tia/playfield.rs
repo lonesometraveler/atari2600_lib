@@ -7,7 +7,7 @@ use crate::tia::counter::Counter;
 use super::SharedColor;
 
 pub struct Playfield {
-    colors: Rc<RefCell<Colors>>,
+    colors: SharedColor,
     ctr: Counter,
 
     // 20-bit playfield
