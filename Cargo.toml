@@ -1,5 +1,5 @@
 [package]
-name = "atari_lib"
+name = "atari2600_lib"
 version = "0.1.0"
 edition = "2021"
 
