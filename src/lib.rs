@@ -11,7 +11,6 @@ use log::*;
 
 use crate::{bus::AtariBus, cpu6507::CPU6507, riot::RIOT, tia::TIA};
 
-type SharedCPU = Rc<RefCell<CPU6507>>;
 type SharedRIOT = Rc<RefCell<RIOT>>;
 type SharedTIA = Rc<RefCell<TIA>>;
 // type SharedDebugger = Rc<RefCell<Debugger>>;
@@ -89,6 +88,62 @@ impl EmulatorCore {
             self.handle_cpu_clock(c);
         }
     }
+}
+
+pub trait KeyEvent {
+    fn up(&mut self, pressed: bool);
+    fn down(&mut self, pressed: bool);
+    fn left(&mut self, pressed: bool);
+    fn right(&mut self, pressed: bool);
+    fn select(&mut self, pressed: bool);
+    fn reset(&mut self, pressed: bool);
+    fn joystick_fire(&mut self, pressed: bool);
+    fn color(&mut self);
+    // TODO: Debugger
+    // fn toggle(&mut self);
+    // fn step_frame(&mut self);
+}
+
+impl KeyEvent for EmulatorCore {
+    fn up(&mut self, pressed: bool) {
+        self.riot.borrow_mut().up(pressed);
+    }
+
+    fn down(&mut self, pressed: bool) {
+        self.riot.borrow_mut().down(pressed);
+    }
+
+    fn left(&mut self, pressed: bool) {
+        self.riot.borrow_mut().left(pressed);
+    }
+
+    fn right(&mut self, pressed: bool) {
+        self.riot.borrow_mut().right(pressed);
+    }
+
+    fn reset(&mut self, pressed: bool) {
+        self.riot.borrow_mut().reset(pressed);
+    }
+
+    fn select(&mut self, pressed: bool) {
+        self.riot.borrow_mut().select(pressed);
+    }
+
+    fn joystick_fire(&mut self, pressed: bool) {
+        self.tia.borrow_mut().joystick_fire(pressed);
+    }
+
+    fn color(&mut self) {
+        self.riot.borrow_mut().color();
+    }
+
+    // fn toggle(&mut self) {
+    //     self.debugger.borrow_mut().toggle();
+    // }
+
+    // fn step_frame(&mut self) {
+    //     self.debugger.borrow_mut().step_frame();
+    // }
 }
 
 pub fn initialize_components<P: AsRef<str>>(
