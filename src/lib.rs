@@ -1,6 +1,7 @@
 pub mod bus;
 pub mod cpu6507;
 pub mod debugger;
+mod opcode;
 pub mod riot;
 pub mod tia;
 
