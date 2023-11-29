@@ -1,6 +1,6 @@
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug)]
-pub enum Instruction {
+pub(crate) enum Instruction {
     None,
     ADC,
     ANC,

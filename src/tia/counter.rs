@@ -19,7 +19,7 @@ const RESET_VALUE: u8 = 39;
 /// Horizontal position is implicitly tracked by the counter value, and movement is
 /// implemented by making its cycle higher or lower than the current scanline.
 /// See: http://www.atarihq.com/danb/files/TIA_HW_Notes.txt
-pub struct Counter {
+pub(crate) struct Counter {
     period: u8,
     reset_value: u8,
     reset_delay: u8,

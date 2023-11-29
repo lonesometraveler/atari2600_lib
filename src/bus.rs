@@ -1,10 +1,6 @@
-use std::cell::RefCell;
+use crate::{SharedRIOT, SharedTIA};
 use std::fs::File;
 use std::io;
-use std::rc::Rc;
-
-use crate::riot::RIOT;
-use crate::tia::TIA;
 
 pub trait Bus {
     fn read(&mut self, _address: u16) -> u8 {
@@ -19,14 +15,14 @@ pub trait Bus {
     }
 }
 
-pub struct AtariBus {
+pub(crate) struct AtariBus {
     rom: Vec<u8>,
-    tia: Rc<RefCell<TIA>>,
-    riot: Rc<RefCell<RIOT>>,
+    tia: SharedTIA,
+    riot: SharedRIOT,
 }
 
 impl AtariBus {
-    pub fn new(tia: Rc<RefCell<TIA>>, riot: Rc<RefCell<RIOT>>, rom: Vec<u8>) -> Self {
+    pub fn new(tia: SharedTIA, riot: SharedRIOT, rom: Vec<u8>) -> Self {
         Self { rom, tia, riot }
     }
 }

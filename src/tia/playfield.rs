@@ -1,8 +1,7 @@
+use super::SharedColor;
 use crate::tia::counter::Counter;
 
-use super::SharedColor;
-
-pub struct Playfield {
+pub(crate) struct Playfield {
     colors: SharedColor,
     ctr: Counter,
 
