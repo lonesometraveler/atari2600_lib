@@ -1,16 +1,14 @@
-pub mod bus;
-pub mod cpu6507;
-pub mod debugger;
+mod bus;
+mod cpu6507;
+mod debugger;
 mod opcode;
-pub mod riot;
-pub mod tia;
-
-use std::{cell::RefCell, error::Error, fs::File, io::Read, rc::Rc};
-
-use image::Rgba;
-use log::*;
+mod riot;
+mod tia;
 
 use crate::{bus::AtariBus, cpu6507::CPU6507, riot::RIOT, tia::TIA};
+use image::Rgba;
+use log::info;
+use std::{cell::RefCell, error::Error, fs::File, io::Read, rc::Rc};
 
 type SharedRIOT = Rc<RefCell<RIOT>>;
 type SharedTIA = Rc<RefCell<TIA>>;
@@ -19,10 +17,10 @@ type SharedTIA = Rc<RefCell<TIA>>;
 const CLOCKS_PER_SCANLINE: usize = 228;
 
 pub struct EmulatorCore {
-    pub cpu: CPU6507,
-    pub tia: SharedTIA,
-    pub riot: SharedRIOT,
-    pub frame_pixels: [[Rgba<u8>; 160]; 192],
+    cpu: CPU6507,
+    tia: SharedTIA,
+    riot: SharedRIOT,
+    frame_pixels: [[Rgba<u8>; 160]; 192],
 }
 
 pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn Error>> {
@@ -147,7 +145,7 @@ impl KeyEvent for EmulatorCore {
     // }
 }
 
-pub fn initialize_components<P: AsRef<str>>(
+fn initialize_components<P: AsRef<str>>(
     rom_path: P,
 ) -> Result<(SharedRIOT, SharedTIA, CPU6507), Box<dyn Error>> {
     let mut fh = File::open(rom_path.as_ref()).expect("unable to open rom");

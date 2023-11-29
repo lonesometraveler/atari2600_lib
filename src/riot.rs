@@ -2,7 +2,7 @@ use crate::bus::Bus;
 
 #[allow(clippy::upper_case_acronyms)]
 // The RIOT (RAM/IO/Timer) chip. Also known as the PIA. It's a MOS 6532 chip.
-pub struct RIOT {
+pub(crate) struct RIOT {
     ram: [u8; 128],
 
     // Registers

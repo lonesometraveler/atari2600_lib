@@ -9,7 +9,7 @@ pub struct ScanCounter {
 }
 
 /// TIA Object
-pub trait Graphic {
+pub(crate) trait Graphic {
     const MAX_COUNTER_VAL: u8 = 39;
 
     // Initial delay for the graphic scan

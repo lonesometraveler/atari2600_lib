@@ -1,12 +1,8 @@
-use crate::tia::counter::Counter;
-use crate::tia::graphic::ScanCounter;
-use crate::tia::player::Player;
-use crate::tia::PlayerType;
-
 use super::graphic::Graphic;
 use super::SharedColor;
+use crate::tia::{counter::Counter, graphic::ScanCounter, player::Player, PlayerType};
 
-pub struct Missile {
+pub(crate) struct Missile {
     colors: SharedColor,
     hmove_offset: u8,
     ctr: Counter,

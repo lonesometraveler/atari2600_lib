@@ -9,11 +9,11 @@ lazy_static::lazy_static! {
 }
 
 /// A color palette that maps 8-bit color codes (indexes) to RGBA pixels.
-pub type Palette = Vec<Rgba<u8>>;
+pub(crate) type Palette = Vec<Rgba<u8>>;
 
 /// Creates a palette of RGBA colors out of an `u32` array slice. Each number
 /// represents a 3-byte RGB color, where each channel is represented by 8 bits.
-pub fn create_palette(colors: &[u32]) -> Palette {
+pub(crate) fn create_palette(colors: &[u32]) -> Palette {
     let mut palette = Palette::with_capacity(colors.len() * 2);
     for color in colors {
         let color_rgba = Rgba([
@@ -34,7 +34,7 @@ pub fn create_palette(colors: &[u32]) -> Palette {
 /// simplicity, we just store each color twice so that accessing the palette
 /// with bit 0 set either to 0 or 1 yields the same RGBA pixel. See
 /// [`tia::VideoOutput.pixel`](../tia/struct.VideoOutput.html#structfield.pixel)
-pub fn create_tia_palette(colors: &[u32]) -> Palette {
+pub(crate) fn create_tia_palette(colors: &[u32]) -> Palette {
     create_palette(colors)
         .iter()
         .flat_map(|c| vec![*c, *c])
@@ -43,7 +43,7 @@ pub fn create_tia_palette(colors: &[u32]) -> Palette {
 
 /// Returns an NTSC palette. Source:
 /// http://www.qotile.net/minidig/docs/tia_color.html
-pub fn ntsc_palette() -> Palette {
+pub(crate) fn ntsc_palette() -> Palette {
     create_tia_palette(&[
         0x000000, 0x404040, 0x6C6C6C, 0x909090, 0xB0B0B0, 0xC8C8C8, 0xDCDCDC, 0xECECEC, 0x444400,
         0x646410, 0x848424, 0xA0A034, 0xB8B840, 0xD0D050, 0xE8E85C, 0xFCFC68, 0x702800, 0x844414,

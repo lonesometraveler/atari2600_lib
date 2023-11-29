@@ -1,11 +1,8 @@
-use crate::tia::counter::Counter;
-use crate::tia::graphic::ScanCounter;
-use crate::tia::PlayerType;
-
 use super::graphic::Graphic;
 use super::SharedColor;
+use crate::tia::{counter::Counter, graphic::ScanCounter, PlayerType};
 
-pub struct Player {
+pub(crate) struct Player {
     colors: SharedColor,
     hmove_offset: u8,
     ctr: Counter,

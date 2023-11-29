@@ -1,17 +1,14 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use crate::tia::TIA;
+use crate::SharedTIA;
 
 pub struct Debugger {
-    tia: Rc<RefCell<TIA>>,
+    tia: SharedTIA,
     enabled: bool,
 
     next_frame: bool,
 }
 
 impl Debugger {
-    pub fn new(tia: Rc<RefCell<TIA>>) -> Self {
+    pub fn new(tia: SharedTIA) -> Self {
         Self {
             tia,
             enabled: false,

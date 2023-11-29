@@ -7,11 +7,6 @@ mod palette;
 mod player;
 mod playfield;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use image::Rgba;
-
 use crate::bus::Bus;
 use crate::tia::ball::Ball;
 use crate::tia::color::Colors;
@@ -21,6 +16,8 @@ use crate::tia::missile::Missile;
 use crate::tia::palette::DEFAULT_COLOR;
 use crate::tia::player::Player;
 use crate::tia::playfield::Playfield;
+use image::Rgba;
+use std::{cell::RefCell, rc::Rc};
 
 use log::debug;
 

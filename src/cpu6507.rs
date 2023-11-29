@@ -1,14 +1,8 @@
+use crate::bus::Bus;
+use crate::opcode::{AddressingMode, Instruction, Opcode, OPCODES};
+use log::{debug, info};
 use std::env;
 use std::process;
-
-use log::debug;
-use log::info;
-
-use crate::bus::Bus;
-use crate::opcode::AddressingMode;
-use crate::opcode::Instruction;
-use crate::opcode::Opcode;
-use crate::opcode::OPCODES;
 
 const STACK_INIT: u8 = 0xff;
 
@@ -45,14 +39,14 @@ impl AddressingMode {
         }
     }
 
-    pub fn get_bytes(&self, cpu: &mut CPU6507) -> Vec<u8> {
+    pub(crate) fn get_bytes(&self, cpu: &mut CPU6507) -> Vec<u8> {
         let n_bytes = self.n_bytes() as u16;
         (0..n_bytes)
             .map(|n| cpu.read(cpu.pc + n))
             .collect::<Vec<_>>()
     }
 
-    pub fn get_data(&self, cpu: &mut CPU6507) -> (u16, bool) {
+    pub(crate) fn get_data(&self, cpu: &mut CPU6507) -> (u16, bool) {
         let pc = cpu.pc;
         let next_pc = cpu.pc + self.n_bytes() as u16;
 
@@ -159,7 +153,7 @@ impl AddressingMode {
     }
 }
 
-pub struct CPU6507 {
+pub(crate) struct CPU6507 {
     bus: Box<dyn Bus>,
 
     // Main registers

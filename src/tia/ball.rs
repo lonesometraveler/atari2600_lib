@@ -1,10 +1,8 @@
-use crate::tia::counter::Counter;
-use crate::tia::graphic::ScanCounter;
-
 use super::graphic::Graphic;
 use super::SharedColor;
+use crate::tia::{counter::Counter, graphic::ScanCounter};
 
-pub struct Ball {
+pub(crate) struct Ball {
     // SharedColor is an alias for Rc<RefCell<Colors>> (used for shared ownership and interior mutability)
     colors: SharedColor,
     // Horizontal movement offset
