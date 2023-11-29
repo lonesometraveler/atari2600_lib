@@ -19,7 +19,7 @@ type SharedTIA = Rc<RefCell<TIA>>;
 const CLOCKS_PER_SCANLINE: usize = 228;
 
 pub struct EmulatorCore {
-    pub cpu: SharedCPU,
+    pub cpu: CPU6507,
     pub tia: SharedTIA,
     pub riot: SharedRIOT,
     pub frame_pixels: [[Rgba<u8>; 160]; 192],
@@ -75,13 +75,13 @@ impl EmulatorCore {
         }
     }
 
-    fn handle_cpu_clock(&self, c: usize) {
+    fn handle_cpu_clock(&mut self, c: usize) {
         if !self.tia.borrow().cpu_halt() && c % 3 == 2 {
-            self.cpu.borrow_mut().clock();
+            self.cpu.clock();
         }
     }
 
-    fn scanline(&self) {
+    fn scanline(&mut self) {
         for c in 0..CLOCKS_PER_SCANLINE {
             self.handle_riot_clock(c);
             self.tia.borrow_mut().clock();
@@ -93,7 +93,7 @@ impl EmulatorCore {
 
 pub fn initialize_components<P: AsRef<str>>(
     rom_path: P,
-) -> Result<(SharedRIOT, SharedTIA, SharedCPU), Box<dyn Error>> {
+) -> Result<(SharedRIOT, SharedTIA, CPU6507), Box<dyn Error>> {
     let mut fh = File::open(rom_path.as_ref()).expect("unable to open rom");
 
     let mut rom = vec![];
@@ -116,9 +116,8 @@ pub fn initialize_components<P: AsRef<str>>(
     let bus = AtariBus::new(tia.clone(), riot.clone(), rom);
 
     info!("CPU: init");
-    // let mut cpu = CPU6507::new(Box::new(bus));
-    let cpu = Rc::new(RefCell::new(CPU6507::new(Box::new(bus))));
-    cpu.borrow_mut().reset();
+    let mut cpu = CPU6507::new(Box::new(bus));
+    cpu.reset();
 
     Ok((riot, tia, cpu))
 }
