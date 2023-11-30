@@ -1,8 +1,7 @@
 use crate::bus::Bus;
 use crate::opcode::{AddressingMode, Instruction, Opcode, OPCODES};
 use log::{debug, info};
-use std::env;
-use std::process;
+use std::{env, process};
 
 const STACK_INIT: u8 = 0xff;
 
@@ -15,142 +14,6 @@ lazy_static::lazy_static! {
 
 fn pages_differ(addr_a: u16, addr_b: u16) -> bool {
     (addr_a & 0xff00) != (addr_b & 0xff00)
-}
-
-impl AddressingMode {
-    pub fn n_bytes(&self) -> usize {
-        match *self {
-            AddressingMode::Implied | AddressingMode::Accumulator => 1,
-
-            AddressingMode::Immediate
-            | AddressingMode::ZeroPageIndexed
-            | AddressingMode::Relative
-            | AddressingMode::ZeroPageX
-            | AddressingMode::ZeroPageY
-            | AddressingMode::IndexedIndirect
-            | AddressingMode::IndirectIndexed => 2,
-
-            AddressingMode::Absolute
-            | AddressingMode::AbsoluteX
-            | AddressingMode::AbsoluteY
-            | AddressingMode::Indirect => 3,
-
-            _ => panic!("Bad addressing mode {:?}", *self),
-        }
-    }
-
-    pub(crate) fn get_bytes(&self, cpu: &mut CPU6507) -> Vec<u8> {
-        let n_bytes = self.n_bytes() as u16;
-        (0..n_bytes)
-            .map(|n| cpu.read(cpu.pc + n))
-            .collect::<Vec<_>>()
-    }
-
-    pub(crate) fn get_data(&self, cpu: &mut CPU6507) -> (u16, bool) {
-        let pc = cpu.pc;
-        let next_pc = cpu.pc + self.n_bytes() as u16;
-
-        match *self {
-            AddressingMode::Immediate => {
-                let addr = pc + 1;
-                (addr, false)
-            }
-            AddressingMode::Absolute => {
-                let lo = cpu.read(pc + 1) as u16;
-                let hi = cpu.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
-                (addr, false)
-            }
-            AddressingMode::Implied => (0, false),
-            AddressingMode::Accumulator => (0, false),
-            AddressingMode::ZeroPageIndexed => {
-                let addr = cpu.read(pc + 1) as u16;
-                (addr, false)
-            }
-            AddressingMode::Relative => {
-                let offset = cpu.read(pc + 1) as u16;
-
-                // NOTE This has to be based off the program counter, _after_
-                // it has been advanced, but before the instruction is
-                // being executed. I don't know why though?
-
-                // All of this casting is to handle negative offsets
-                (((next_pc as i16) + (offset as i8 as i16)) as u16, false)
-            }
-            AddressingMode::AbsoluteX => {
-                let lo = cpu.read(pc + 1) as u16;
-                let hi = cpu.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
-                let n_addr = addr.wrapping_add(cpu.x as u16);
-                (n_addr, pages_differ(addr, n_addr))
-            }
-            AddressingMode::AbsoluteY => {
-                let lo = cpu.read(pc + 1) as u16;
-                let hi = cpu.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
-                let n_addr = addr.wrapping_add(cpu.y as u16);
-                (n_addr, pages_differ(addr, n_addr))
-            }
-            AddressingMode::Indirect => {
-                let lo = cpu.read(pc + 1) as u16;
-                let hi = cpu.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
-
-                let lo = cpu.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    cpu.read(addr & 0xff00) as u16
-                } else {
-                    cpu.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
-
-                (addr, false)
-            }
-            AddressingMode::ZeroPageX => {
-                let addr = cpu.read(pc + 1).wrapping_add(cpu.x) as u16;
-                (addr, false)
-            }
-            AddressingMode::ZeroPageY => {
-                let addr = cpu.read(pc + 1).wrapping_add(cpu.y) as u16;
-                (addr, false)
-            }
-            AddressingMode::IndexedIndirect => {
-                let lo = cpu.read(pc + 1);
-                let addr = lo.wrapping_add(cpu.x) as u16;
-
-                let lo = cpu.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    cpu.read(addr & 0xff00) as u16
-                } else {
-                    cpu.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
-                (addr, false)
-            }
-            AddressingMode::IndirectIndexed => {
-                let addr = cpu.read(pc + 1) as u16;
-
-                let lo = cpu.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    cpu.read(addr & 0xff00) as u16
-                } else {
-                    cpu.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
-                let n_addr = addr.wrapping_add(cpu.y as u16);
-
-                (n_addr, pages_differ(addr, n_addr))
-            }
-
-            _ => panic!("Bad addressing mode {:?}", *self),
-        }
-    }
 }
 
 pub(crate) struct CPU6507 {
@@ -246,6 +109,119 @@ impl CPU6507 {
         self.cycles = 0;
     }
 
+    pub fn get_bytes(&mut self, addr_mode: &AddressingMode) -> Vec<u8> {
+        let n_bytes = addr_mode.n_bytes() as u16;
+        (0..n_bytes)
+            .map(|n| self.read(self.pc + n))
+            .collect::<Vec<_>>()
+    }
+
+    pub fn get_data(&mut self, addr_mode: &AddressingMode) -> (u16, bool) {
+        let pc = self.pc;
+        let next_pc = self.pc + addr_mode.n_bytes() as u16;
+
+        match addr_mode {
+            AddressingMode::Immediate => {
+                let addr = pc + 1;
+                (addr, false)
+            }
+            AddressingMode::Absolute => {
+                let lo = self.read(pc + 1) as u16;
+                let hi = self.read(pc + 2) as u16;
+                let addr = (hi << 8) | lo;
+                (addr, false)
+            }
+            AddressingMode::Implied => (0, false),
+            AddressingMode::Accumulator => (0, false),
+            AddressingMode::ZeroPageIndexed => {
+                let addr = self.read(pc + 1) as u16;
+                (addr, false)
+            }
+            AddressingMode::Relative => {
+                let offset = self.read(pc + 1) as u16;
+
+                // NOTE This has to be based off the program counter, _after_
+                // it has been advanced, but before the instruction is
+                // being executed. I don't know why though?
+
+                // All of this casting is to handle negative offsets
+                (((next_pc as i16) + (offset as i8 as i16)) as u16, false)
+            }
+            AddressingMode::AbsoluteX => {
+                let lo = self.read(pc + 1) as u16;
+                let hi = self.read(pc + 2) as u16;
+                let addr = (hi << 8) | lo;
+                let n_addr = addr.wrapping_add(self.x as u16);
+                (n_addr, pages_differ(addr, n_addr))
+            }
+            AddressingMode::AbsoluteY => {
+                let lo = self.read(pc + 1) as u16;
+                let hi = self.read(pc + 2) as u16;
+                let addr = (hi << 8) | lo;
+                let n_addr = addr.wrapping_add(self.y as u16);
+                (n_addr, pages_differ(addr, n_addr))
+            }
+            AddressingMode::Indirect => {
+                let lo = self.read(pc + 1) as u16;
+                let hi = self.read(pc + 2) as u16;
+                let addr = (hi << 8) | lo;
+
+                let lo = self.read(addr) as u16;
+
+                let hi = if addr & 0xff == 0xff {
+                    self.read(addr & 0xff00) as u16
+                } else {
+                    self.read(addr + 1) as u16
+                };
+
+                let addr = (hi << 8) | lo;
+
+                (addr, false)
+            }
+            AddressingMode::ZeroPageX => {
+                let addr = self.read(pc + 1).wrapping_add(self.x) as u16;
+                (addr, false)
+            }
+            AddressingMode::ZeroPageY => {
+                let addr = self.read(pc + 1).wrapping_add(self.y) as u16;
+                (addr, false)
+            }
+            AddressingMode::IndexedIndirect => {
+                let lo = self.read(pc + 1);
+                let addr = lo.wrapping_add(self.x) as u16;
+
+                let lo = self.read(addr) as u16;
+
+                let hi = if addr & 0xff == 0xff {
+                    self.read(addr & 0xff00) as u16
+                } else {
+                    self.read(addr + 1) as u16
+                };
+
+                let addr = (hi << 8) | lo;
+                (addr, false)
+            }
+            AddressingMode::IndirectIndexed => {
+                let addr = self.read(pc + 1) as u16;
+
+                let lo = self.read(addr) as u16;
+
+                let hi = if addr & 0xff == 0xff {
+                    self.read(addr & 0xff00) as u16
+                } else {
+                    self.read(addr + 1) as u16
+                };
+
+                let addr = (hi << 8) | lo;
+                let n_addr = addr.wrapping_add(self.y as u16);
+
+                (n_addr, pages_differ(addr, n_addr))
+            }
+
+            _ => panic!("Bad addressing mode {:?}", addr_mode),
+        }
+    }
+
     fn flags(&self) -> u8 {
         (self.c as u8)
             | ((self.z as u8) << 1)
@@ -271,7 +247,7 @@ impl CPU6507 {
     fn debug(&mut self, op: &Opcode) {
         let Opcode(ref inst, ref addr_mode, _, _) = *op;
 
-        let raw_bytes = addr_mode.get_bytes(self);
+        let raw_bytes = self.get_bytes(addr_mode);
 
         let bytes = raw_bytes
             .iter()
@@ -357,7 +333,7 @@ impl CPU6507 {
         let Opcode(inst, addr_mode, cycles, extra_cycles) = op;
 
         // Get address and check for page crossing
-        let (addr, page_crossed) = addr_mode.get_data(self);
+        let (addr, page_crossed) = self.get_data(addr_mode);
 
         // Update program counter
         self.pc += addr_mode.n_bytes() as u16;
