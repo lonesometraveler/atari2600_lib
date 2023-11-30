@@ -1,3 +1,4 @@
+// https://www.masswerk.at/6502/6502_instruction_set.html
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum Instruction {
