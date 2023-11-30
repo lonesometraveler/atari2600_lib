@@ -25,14 +25,14 @@ pub(crate) struct CPU6507 {
     pub y: u8, // Y Index
 
     // Status register flags
-    c: bool, // Carry
-    z: bool, // Zero
-    i: bool, // Interrupt
-    d: bool, // Decimal mode
-    b: bool, // Software interrupt (BRK)
-    u: bool, // Unused flag
-    v: bool, // Overflow
-    s: bool, // Sign
+    c: bool, // Carry flag (1 if last operation resulted in carry, borrow, or extend beyond MSB)
+    z: bool, // Zero flag (1 if result of last operation was zero)
+    i: bool, // Interrupt disable flag (1 if interrupts are disabled)
+    d: bool, // Decimal mode flag (1 if CPU is in BCD mode)
+    b: bool, // Software interrupt (BRK) flag
+    u: bool, // Unused flag (ignored)
+    v: bool, // Overflow flag (1 if signed arithmetic result is too large or too small)
+    s: bool, // Sign flag (1 if result of last operation was negative)
 
     // Program counter
     pub pc: u16,
