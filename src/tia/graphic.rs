@@ -125,14 +125,12 @@ pub(crate) trait Graphic {
         Self::GRAPHIC_SIZE
     }
 
-    // Method to get the current value of the counter
-    // fn counter_value(&self) -> u8;
-
     // Method to get a immutable reference to the counter
     fn get_counter(&self) -> &Counter;
 
     // Method to get a mutable reference to the counter
     fn get_counter_mut(&mut self) -> &mut Counter;
 
+    // Method to get the hmove offset value
     fn get_hmove_offset(&self) -> u8;
 }
