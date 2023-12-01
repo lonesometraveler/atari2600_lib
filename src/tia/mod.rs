@@ -5,6 +5,7 @@ mod graphic;
 mod missile;
 mod palette;
 mod player;
+#[allow(dead_code)]
 mod playfield;
 
 use crate::bus::Bus;

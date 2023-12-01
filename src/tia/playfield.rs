@@ -1,18 +1,34 @@
 use super::SharedColor;
 use crate::tia::counter::Counter;
+use modular_bitfield::prelude::*;
+use std::array;
+
+const PF_LENGTH: usize = 20;
+
+// 20-bit playfield
+// .... | .... .... | .... ....
+// PF0  |    PF1    |    PF2
+#[derive(Clone, Copy)]
+#[bitfield(bits = 20)]
+struct PlayfieldData {
+    pf0: B4,
+    pf1: B8,
+    pf2: B8,
+}
+
+impl PlayfieldData {
+    // returns pf0, pf1, pf2 as [bool; PF_LENGTH]
+    fn bits(&self) -> [bool; PF_LENGTH] {
+        let val = (self.pf0() as u32) << 16 | (self.pf1() as u32) << 8 | self.pf2() as u32;
+        array::from_fn(|i| val & (1 << (19 - i)) != 0)
+    }
+}
 
 pub(crate) struct Playfield {
     colors: SharedColor,
     ctr: Counter,
 
-    // 20-bit playfield
-    // .... | .... .... | .... ....
-    // PF0  |    PF1    |    PF2
-    pf0: u8,
-    pf1: u8,
-    pf2: u8,
-    pf: [bool; 20],
-
+    pf_data: PlayfieldData,
     horizontal_mirror: bool,
     score_mode: bool,
     priority: bool,
@@ -26,10 +42,7 @@ impl Playfield {
             colors,
             ctr: Counter::default(),
 
-            pf0: 0,
-            pf1: 0,
-            pf2: 0,
-            pf: [false; 20],
+            pf_data: PlayfieldData::from_bytes([0, 0, 0]),
 
             horizontal_mirror: false,
             score_mode: false,
@@ -40,30 +53,20 @@ impl Playfield {
     }
 
     pub fn set_pf0(&mut self, val: u8) {
-        self.pf0 = val;
-
         // PF0 is the first 4 bits, in big-endian order
-        for x in 0..4 {
-            self.pf[x] = (self.pf0 >> (x + 4)) & 0x01 != 0;
-        }
+        let val = reverse_bit_order(val);
+        self.pf_data.set_pf0(val);
     }
 
     pub fn set_pf1(&mut self, val: u8) {
-        self.pf1 = val;
-
         // PF1 is the next 8 bits, in little-endian order
-        for x in 0..8 {
-            self.pf[x + 4] = (self.pf1 >> (7 - x)) & 0x01 != 0;
-        }
+        self.pf_data.set_pf1(val);
     }
 
     pub fn set_pf2(&mut self, val: u8) {
-        self.pf2 = val;
-
         // PF2 is the last 8 bits, in big-endian order
-        for x in 0..8 {
-            self.pf[x + 12] = (self.pf2 >> x) & 0x01 != 0;
-        }
+        let val = reverse_bit_order(val);
+        self.pf_data.set_pf2(val);
     }
 
     pub fn set_control(&mut self, val: u8) {
@@ -75,11 +78,13 @@ impl Playfield {
     fn tick_graphic_circuit(&mut self) {
         let ctr = self.ctr.value() as usize;
         let pf_x = ctr % 20;
+        let data_bits = self.pf_data.bits();
+        let colors = self.colors.borrow();
 
         if ctr < 20 {
-            self.graphic_bit_value = match (self.pf[pf_x], self.score_mode) {
-                (true, true) => Some(self.colors.borrow().colup0()),
-                (true, false) => Some(self.colors.borrow().colupf()),
+            self.graphic_bit_value = match (data_bits[pf_x], self.score_mode) {
+                (true, true) => Some(colors.colup0()),
+                (true, false) => Some(colors.colupf()),
                 (false, _) => None,
             };
         } else {
@@ -87,14 +92,14 @@ impl Playfield {
             // screen, optionally mirrored horizontally as denoted by the
             // CTRLPF register.
             let idx = if self.horizontal_mirror {
-                self.pf.len() - 1 - pf_x
+                PF_LENGTH - 1 - pf_x
             } else {
                 pf_x
             };
 
-            self.graphic_bit_value = match (self.pf[idx], self.score_mode) {
-                (true, true) => Some(self.colors.borrow().colup1()),
-                (true, false) => Some(self.colors.borrow().colupf()),
+            self.graphic_bit_value = match (data_bits[idx], self.score_mode) {
+                (true, true) => Some(colors.colup1()),
+                (true, false) => Some(colors.colupf()),
                 (false, _) => None,
             };
         }
@@ -112,4 +117,16 @@ impl Playfield {
     pub fn get_color(&self) -> Option<u8> {
         self.graphic_bit_value
     }
+}
+
+fn reverse_bit_order(value: u8) -> u8 {
+    let mut value = value;
+    let mut result = 0;
+
+    for _ in 0..8 {
+        result = (result << 1) | (value & 1);
+        value >>= 1;
+    }
+
+    result
 }
