@@ -106,7 +106,7 @@ impl Graphic for Player {
     }
 
     fn pixel_bit(&self) -> bool {
-        if let Some(x) = self.scan_counter.bit_idx {
+        self.scan_counter.bit_idx.map_or(false, |x| {
             let graphic = if self.vdel {
                 self.old_value
             } else {
@@ -118,17 +118,16 @@ impl Graphic for Player {
             } else {
                 ((graphic >> (7 - x)) & 1) != 0
             }
-        } else {
-            false
-        }
+        })
     }
 
     fn should_draw_copy(&self) -> bool {
         let count = self.ctr.value();
+        let nusiz = self.nusiz;
 
-        (count == 3 && (self.nusiz == 0b001 || self.nusiz == 0b011))
-            || (count == 7 && (self.nusiz == 0b010 || self.nusiz == 0b011 || self.nusiz == 0b110))
-            || (count == 15 && (self.nusiz == 0b100 || self.nusiz == 0b110))
+        (count == 3 && (nusiz == 0b001 || nusiz == 0b011))
+            || (count == 7 && (nusiz == 0b010 || nusiz == 0b011 || nusiz == 0b110))
+            || (count == 15 && (nusiz == 0b100 || nusiz == 0b110))
     }
 
     fn get_color(&self) -> Option<u8> {

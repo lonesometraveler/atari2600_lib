@@ -82,11 +82,11 @@ impl Graphic for Missile {
 
     fn should_draw_copy(&self) -> bool {
         let count = self.ctr.value();
+        let copies = self.copies;
 
-        (count == 3 && (self.copies == 0b001 || self.copies == 0b011))
-            || (count == 7
-                && (self.copies == 0b010 || self.copies == 0b011 || self.copies == 0b110))
-            || (count == 15 && (self.copies == 0b100 || self.copies == 0b110))
+        (count == 3 && (copies == 0b001 || copies == 0b011))
+            || (count == 7 && (copies == 0b010 || copies == 0b011 || copies == 0b110))
+            || (count == 15 && (copies == 0b100 || copies == 0b110))
     }
 
     fn get_color(&self) -> Option<u8> {
