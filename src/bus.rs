@@ -29,40 +29,50 @@ impl AtariBus {
 
 impl Bus for AtariBus {
     fn read(&mut self, address: u16) -> u8 {
-        // https://problemkaputt.de/2k6specs.htm#memorymirrors
-
-        let a12 = (address & 0b0001_0000_0000_0000) != 0;
-        let a9 = (address & 0b0000_0010_0000_0000) != 0;
-        let a7 = (address & 0b0000_0000_1000_0000) != 0;
-
-        match (a12, a9, a7) {
-            // Cartridge memory is selected by A12=1
-            (true, _, _) => self.rom[address as usize & 0xfff],
-            // PIA I/O is selected by A12=0, A9=1, A7=1
-            (false, true, true) => self.riot.borrow_mut().read(address & 0x2ff),
-            // PIA RAM is selected by A12=0, A9=0, A7=1
-            (false, false, true) => self.riot.borrow_mut().read(address & 0x7f),
-            // The TIA chip is addressed by A12=0, A7=0
-            (false, _, false) => self.tia.borrow_mut().read((address & 0x0f) | 0x30),
+        let memory_mirror = MemoryMirrors::from(address);
+        match memory_mirror {
+            MemoryMirrors::Cartridge => self.rom[address as usize & 0xfff],
+            MemoryMirrors::PiaIO => self.riot.borrow_mut().read(address & 0x2ff),
+            MemoryMirrors::PiaRam => self.riot.borrow_mut().read(address & 0x7f),
+            MemoryMirrors::Tia => self.tia.borrow_mut().read((address & 0x0f) | 0x30),
         }
     }
 
     fn write(&mut self, address: u16, val: u8) {
-        // https://problemkaputt.de/2k6specs.htm#memorymirrors
+        let memory_mirror = MemoryMirrors::from(address);
+        match memory_mirror {
+            MemoryMirrors::Cartridge => self.rom[address as usize & 0xfff] = val,
+            MemoryMirrors::PiaIO => self.riot.borrow_mut().write(address & 0x2ff, val),
+            MemoryMirrors::PiaRam => self.riot.borrow_mut().write(address & 0x7f, val),
+            MemoryMirrors::Tia => self.tia.borrow_mut().write(address & 0x3f, val),
+        }
+    }
+}
 
-        let a12 = (address & 0b0001_0000_0000_0000) != 0;
-        let a9 = (address & 0b0000_0010_0000_0000) != 0;
-        let a7 = (address & 0b0000_0000_1000_0000) != 0;
+// https://problemkaputt.de/2k6specs.htm#memorymirrors
+enum MemoryMirrors {
+    Cartridge,
+    Tia,
+    PiaIO,
+    PiaRam,
+}
 
-        match (a12, a9, a7) {
+impl From<u16> for MemoryMirrors {
+    fn from(address: u16) -> Self {
+        const A12: u16 = 0b0001_0000_0000_0000; // 0x1000
+        const A9: u16 = 0b0000_0010_0000_0000; // 0x0200
+        const A7: u16 = 0b0000_0000_1000_0000; // 0x0080
+
+        match address {
             // Cartridge memory is selected by A12=1
-            (true, _, _) => self.rom[address as usize & 0xfff] = val,
+            a if a & A12 != 0 => Self::Cartridge,
             // PIA I/O is selected by A12=0, A9=1, A7=1
-            (false, true, true) => self.riot.borrow_mut().write(address & 0x2ff, val),
+            a if a & (A12 | A9 | A7) == A9 | A7 => Self::PiaIO,
             // PIA RAM is selected by A12=0, A9=0, A7=1
-            (false, false, true) => self.riot.borrow_mut().write(address & 0x7f, val),
+            a if a & A7 == A7 => Self::PiaRam,
             // The TIA chip is addressed by A12=0, A7=0
-            (false, _, false) => self.tia.borrow_mut().write(address & 0x3f, val),
+            a if a & A7 == 0 => Self::Tia,
+            _ => unreachable!(),
         }
     }
 }
