@@ -16,6 +16,23 @@ fn pages_differ(addr_a: u16, addr_b: u16) -> bool {
     (addr_a & 0xff00) != (addr_b & 0xff00)
 }
 
+#[allow(dead_code)]
+mod status {
+    use modular_bitfield::bitfield;
+    #[bitfield(bits = 8)]
+    pub(crate) struct StatusRegisterFlags {
+        pub c: bool, // Carry flag (1 if last operation resulted in carry, borrow, or extend beyond MSB)
+        pub z: bool, // Zero flag (1 if result of last operation was zero)
+        pub i: bool, // Interrupt disable flag (1 if interrupts are disabled)
+        pub d: bool, // Decimal mode flag (1 if CPU is in BCD mode)
+        pub b: bool, // Software interrupt (BRK) flag
+        pub u: bool, // Unused flag (ignored)
+        pub v: bool, // Overflow flag (1 if signed arithmetic result is too large or too small)
+        pub s: bool, // Sign flag (1 if result of last operation was negative)
+    }
+}
+use status::StatusRegisterFlags;
+
 pub(crate) struct CPU6507 {
     bus: Box<dyn Bus>,
 
@@ -25,14 +42,7 @@ pub(crate) struct CPU6507 {
     pub y: u8, // Y Index
 
     // Status register flags
-    c: bool, // Carry flag (1 if last operation resulted in carry, borrow, or extend beyond MSB)
-    z: bool, // Zero flag (1 if result of last operation was zero)
-    i: bool, // Interrupt disable flag (1 if interrupts are disabled)
-    d: bool, // Decimal mode flag (1 if CPU is in BCD mode)
-    b: bool, // Software interrupt (BRK) flag
-    u: bool, // Unused flag (ignored)
-    v: bool, // Overflow flag (1 if signed arithmetic result is too large or too small)
-    s: bool, // Sign flag (1 if result of last operation was negative)
+    flags: StatusRegisterFlags,
 
     // Program counter
     pub pc: u16,
@@ -70,14 +80,7 @@ impl CPU6507 {
             x: 0,
             y: 0,
 
-            c: false,
-            z: false,
-            i: false,
-            d: false,
-            b: false,
-            u: false,
-            v: false,
-            s: false,
+            flags: StatusRegisterFlags::new(),
 
             pc: 0x0000,
 
@@ -109,14 +112,14 @@ impl CPU6507 {
         self.cycles = 0;
     }
 
-    pub fn get_bytes(&mut self, addr_mode: &AddressingMode) -> Vec<u8> {
+    fn get_bytes(&mut self, addr_mode: &AddressingMode) -> Vec<u8> {
         let n_bytes = addr_mode.n_bytes() as u16;
         (0..n_bytes)
             .map(|n| self.read(self.pc + n))
             .collect::<Vec<_>>()
     }
 
-    pub fn get_data(&mut self, addr_mode: &AddressingMode) -> (u16, bool) {
+    fn get_data(&mut self, addr_mode: &AddressingMode) -> (u16, bool) {
         let pc = self.pc;
         let next_pc = self.pc + addr_mode.n_bytes() as u16;
 
@@ -223,25 +226,25 @@ impl CPU6507 {
     }
 
     fn flags(&self) -> u8 {
-        (self.c as u8)
-            | ((self.z as u8) << 1)
-            | ((self.i as u8) << 2)
-            | ((self.d as u8) << 3)
-            | ((self.b as u8) << 4)
-            | ((self.u as u8) << 5)
-            | ((self.v as u8) << 6)
-            | ((self.s as u8) << 7)
+        (self.flags.c() as u8)
+            | ((self.flags.z() as u8) << 1)
+            | ((self.flags.i() as u8) << 2)
+            | ((self.flags.d() as u8) << 3)
+            | ((self.flags.b() as u8) << 4)
+            | ((self.flags.u() as u8) << 5)
+            | ((self.flags.v() as u8) << 6)
+            | ((self.flags.s() as u8) << 7)
     }
 
     fn set_flags(&mut self, val: u8) {
-        self.c = val & 0x01 == 1;
-        self.z = (val >> 1 & 0x01) == 1;
-        self.i = (val >> 2 & 0x01) == 1;
-        self.d = (val >> 3 & 0x01) == 1;
-        self.b = (val >> 4 & 0x01) == 1;
-        self.u = (val >> 5 & 0x01) == 1;
-        self.v = (val >> 6 & 0x01) == 1;
-        self.s = (val >> 7 & 0x01) == 1;
+        self.flags.set_c(val & 0x01 == 1);
+        self.flags.set_z((val >> 1 & 0x01) == 1);
+        self.flags.set_i((val >> 2 & 0x01) == 1);
+        self.flags.set_d((val >> 3 & 0x01) == 1);
+        self.flags.set_b((val >> 4 & 0x01) == 1);
+        self.flags.set_u((val >> 5 & 0x01) == 1);
+        self.flags.set_v((val >> 6 & 0x01) == 1);
+        self.flags.set_s((val >> 7 & 0x01) == 1);
     }
 
     fn debug(&mut self, op: &Opcode) {
@@ -302,8 +305,8 @@ impl CPU6507 {
     }
 
     fn update_sz(&mut self, val: u8) {
-        self.s = val & 0x80 != 0;
-        self.z = val == 0;
+        self.flags.set_s(val & 0x80 != 0);
+        self.flags.set_z(val == 0);
     }
 
     fn add_branch_cycles(&mut self, pc: u16, addr: u16) {
@@ -451,8 +454,8 @@ impl CPU6507 {
     fn adc(&mut self, addr: u16) {
         let val = self.read(addr);
 
-        if self.d {
-            let mut lo = (self.a as u16 & 0x0f) + (val as u16 & 0x0f) + (self.c as u16);
+        if self.flags.d() {
+            let mut lo = (self.a as u16 & 0x0f) + (val as u16 & 0x0f) + (self.flags.c() as u16);
             let mut hi = (self.a as u16 & 0xf0) + (val as u16 & 0xf0);
 
             // In BCD, values 0x0A to 0x0F are invalid, so we add 1 to the high nybble for the
@@ -462,9 +465,10 @@ impl CPU6507 {
                 lo += 0x06;
             }
 
-            self.s = (hi & 0x80) != 0;
-            self.z = ((lo + hi) & 0xff) != 0;
-            self.v = ((self.a ^ val) & 0x80 == 0) && ((self.a ^ hi as u8) & 0x80 != 0);
+            self.flags.set_s((hi & 0x80) != 0);
+            self.flags.set_z(((lo + hi) & 0xff) != 0);
+            self.flags
+                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ hi as u8) & 0x80 != 0));
 
             // 0xA0 to 0xF0 are invalid for the high nybble, so we need to skip 6 values of the
             // high nybble.
@@ -472,21 +476,22 @@ impl CPU6507 {
                 hi += 0x60;
             }
 
-            self.c = (hi & 0xff00) != 0;
+            self.flags.set_c((hi & 0xff00) != 0);
             self.a = (lo & 0x0f) as u8 | (hi & 0xf0) as u8;
         } else {
-            let n = (self.a as u16) + (val as u16) + (self.c as u16);
+            let n = (self.a as u16) + (val as u16) + (self.flags.c() as u16);
             let a = (n & 0x00ff) as u8;
 
             self.update_sz(a);
-            self.c = n > 0xff;
+            self.flags.set_c(n > 0xff);
 
             // The first condition checks if the sign of the accumulator and the
             // the sign of value that we're adding are the same.
             //
             // The second condition checks if the result of the addition has a
             // different sign to either of the values we added together.
-            self.v = ((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0);
+            self.flags
+                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0));
 
             self.a = a;
         }
@@ -505,7 +510,7 @@ impl CPU6507 {
             _ => self.read(addr),
         };
 
-        self.c = val & 0x80 != 0;
+        self.flags.set_c(val & 0x80 != 0);
         let n = val << 1;
 
         match addr_mode {
@@ -521,7 +526,7 @@ impl CPU6507 {
     }
 
     fn bcc(&mut self, addr: u16) {
-        if !self.c {
+        if !self.flags.c() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -529,7 +534,7 @@ impl CPU6507 {
     }
 
     fn bcs(&mut self, addr: u16) {
-        if self.c {
+        if self.flags.c() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -537,7 +542,7 @@ impl CPU6507 {
     }
 
     fn beq(&mut self, addr: u16) {
-        if self.z {
+        if self.flags.z() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -546,14 +551,14 @@ impl CPU6507 {
 
     fn bit(&mut self, addr: u16) {
         let val = self.read(addr);
-        self.s = val & 0x80 != 0;
-        self.v = (val >> 0x06 & 0x01) == 1;
+        self.flags.set_s(val & 0x80 != 0);
+        self.flags.set_v((val >> 0x06 & 0x01) == 1);
         let f = self.a & val;
-        self.z = f == 0;
+        self.flags.set_z(f == 0);
     }
 
     fn bmi(&mut self, addr: u16) {
-        if self.s {
+        if self.flags.s() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -561,7 +566,7 @@ impl CPU6507 {
     }
 
     fn bne(&mut self, addr: u16) {
-        if !self.z {
+        if !self.flags.z() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -569,7 +574,7 @@ impl CPU6507 {
     }
 
     fn bpl(&mut self, addr: u16) {
-        if !self.s {
+        if !self.flags.s() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -580,12 +585,12 @@ impl CPU6507 {
         let pc = self.pc + 1;
         self.stack_push16(pc);
 
-        self.b = true;
+        self.flags.set_b(true);
 
         let flags = self.flags() | 0x10;
         self.stack_push8(flags);
 
-        self.i = true;
+        self.flags.set_i(true);
 
         let lo = self.read(0xFFFE) as u16;
         let hi = self.read(0xFFFF) as u16;
@@ -594,7 +599,7 @@ impl CPU6507 {
     }
 
     fn bvc(&mut self, addr: u16) {
-        if !self.v {
+        if !self.flags.v() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -602,7 +607,7 @@ impl CPU6507 {
     }
 
     fn bvs(&mut self, addr: u16) {
-        if self.v {
+        if self.flags.v() {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
@@ -610,25 +615,25 @@ impl CPU6507 {
     }
 
     fn clc(&mut self) {
-        self.c = false;
+        self.flags.set_c(false);
     }
 
     fn cld(&mut self) {
-        self.d = false;
+        self.flags.set_d(false);
     }
 
     fn cli(&mut self) {
-        self.i = false;
+        self.flags.set_i(false);
     }
 
     fn clv(&mut self) {
-        self.v = false;
+        self.flags.set_v(false);
     }
 
     fn cmp(&mut self, addr: u16) {
         let val = self.read(addr);
         let n = self.a.wrapping_sub(val);
-        self.c = self.a >= val;
+        self.flags.set_c(self.a >= val);
         self.update_sz(n);
     }
 
@@ -636,14 +641,14 @@ impl CPU6507 {
         let val = self.read(addr);
         let n = self.x.wrapping_sub(val);
         self.update_sz(n);
-        self.c = self.x >= val;
+        self.flags.set_c(self.x >= val);
     }
 
     fn cpy(&mut self, addr: u16) {
         let val = self.read(addr);
         let n = self.y.wrapping_sub(val);
         self.update_sz(n);
-        self.c = self.y >= val;
+        self.flags.set_c(self.y >= val);
     }
 
     fn dec(&mut self, addr: u16) {
@@ -725,7 +730,7 @@ impl CPU6507 {
             _ => self.read(addr),
         };
 
-        self.c = val & 0x01 == 1;
+        self.flags.set_c(val & 0x01 == 1);
         let n = val >> 1;
         self.update_sz(n);
 
@@ -779,8 +784,8 @@ impl CPU6507 {
             _ => self.read(addr),
         };
 
-        let n = (val << 1) | (self.c as u8);
-        self.c = val & 0x80 != 0;
+        let n = (val << 1) | (self.flags.c() as u8);
+        self.flags.set_c(val & 0x80 != 0);
         self.update_sz(n);
 
         match addr_mode {
@@ -799,8 +804,8 @@ impl CPU6507 {
             _ => self.read(addr),
         };
 
-        let n = (val >> 1) | ((self.c as u8) << 7);
-        self.c = val & 0x01 == 1;
+        let n = (val >> 1) | ((self.flags.c() as u8) << 7);
+        self.flags.set_c(val & 0x01 == 1);
         self.update_sz(n);
 
         match addr_mode {
@@ -829,10 +834,10 @@ impl CPU6507 {
     fn sbc(&mut self, addr: u16) {
         let val = self.read(addr);
 
-        if self.d {
+        if self.flags.d() {
             // http://www.6502.org/tutorials/decimal_mode.html
-            let mut temp = (self.a as i16) - (val as i16) - (!self.c as i16);
-            let lo = ((self.a as i16) & 0x0f) - ((val as i16) & 0x0f) - (!self.c as i16);
+            let mut temp = (self.a as i16) - (val as i16) - (!self.flags.c() as i16);
+            let lo = ((self.a as i16) & 0x0f) - ((val as i16) & 0x0f) - (!self.flags.c() as i16);
 
             if temp < 0 {
                 temp -= 0x60;
@@ -844,43 +849,48 @@ impl CPU6507 {
 
             debug!(
                 "SBC  {:02X} - {:02X} - {:02X} = {:04X}",
-                self.a, val, !self.c as u8, temp
+                self.a,
+                val,
+                !self.flags.c() as u8,
+                temp
             );
 
             let a = (temp & 0xff) as u8;
             self.update_sz(a);
-            self.v = ((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0);
-            self.c = temp >= 0;
+            self.flags
+                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0));
+            self.flags.set_c(temp >= 0);
             self.a = a;
         } else {
             let val = !val;
-            let n = (self.a as u16) + (val as u16) + (self.c as u16);
+            let n = (self.a as u16) + (val as u16) + (self.flags.c() as u16);
             let a = (n & 0x00ff) as u8;
 
             self.update_sz(a);
-            self.c = n > 0xff;
+            self.flags.set_c(n > 0xff);
 
             // The first condition checks if the sign of the accumulator and the
             // the sign of value that we're adding are the same.
             //
             // The second condition checks if the result of the addition has a
             // different sign to either of the values we added together.
-            self.v = ((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0);
+            self.flags
+                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0));
 
             self.a = a;
         }
     }
 
     fn sec(&mut self) {
-        self.c = true;
+        self.flags.set_c(true);
     }
 
     fn sed(&mut self) {
-        self.d = true;
+        self.flags.set_d(true);
     }
 
     fn sei(&mut self) {
-        self.i = true;
+        self.flags.set_i(true);
     }
 
     fn sta(&mut self, addr: u16) {
@@ -938,7 +948,7 @@ impl CPU6507 {
         let a = self.a & val;
         self.a = a;
         self.update_sz(a);
-        self.c = (a as i8) < 0;
+        self.flags.set_c((a as i8) < 0);
     }
 
     fn lax(&mut self, addr: u16) {
@@ -962,7 +972,7 @@ impl CPU6507 {
 
         // Copied from cmp
         let n = self.a.wrapping_sub(n);
-        self.c = self.a >= n;
+        self.flags.set_c(self.a >= n);
         self.update_sz(n);
     }
 
@@ -977,19 +987,20 @@ impl CPU6507 {
         let val = n;
         let n: i16 = (self.a as i16)
             .wrapping_sub(val as i16)
-            .wrapping_sub(1 - self.c as i16);
+            .wrapping_sub(1 - self.flags.c() as i16);
 
         let a = n as u8;
         self.update_sz(a);
-        self.v = ((self.a ^ val) & 0x80 > 0) && ((self.a ^ n as u8) & 0x80 > 0);
+        self.flags
+            .set_v(((self.a ^ val) & 0x80 > 0) && ((self.a ^ n as u8) & 0x80 > 0));
         self.a = a;
-        self.c = n >= 0;
+        self.flags.set_c(n >= 0);
     }
 
     fn slo(&mut self, addr: u16, addr_mode: AddressingMode) {
         // Copied from asl
         let val = self.read(addr);
-        self.c = val & 0x80 != 0;
+        self.flags.set_c(val & 0x80 != 0);
         let n = val << 1;
 
         match addr_mode {
@@ -1013,8 +1024,8 @@ impl CPU6507 {
     fn rla(&mut self, addr: u16, addr_mode: AddressingMode) {
         // Copied from rol
         let val = self.read(addr);
-        let c = self.c;
-        self.c = val & 0x80 != 0;
+        let c = self.flags.c();
+        self.flags.set_c(val & 0x80 != 0);
         let n = (val << 1) | (c as u8);
         self.update_sz(n);
 
@@ -1037,7 +1048,7 @@ impl CPU6507 {
     fn sre(&mut self, addr: u16, addr_mode: AddressingMode) {
         // Copied from lsr
         let val = self.read(addr);
-        self.c = val & 0x01 == 1;
+        self.flags.set_c(val & 0x01 == 1);
         let n = val >> 1;
         self.update_sz(n);
 
@@ -1060,8 +1071,8 @@ impl CPU6507 {
     fn rra(&mut self, addr: u16, addr_mode: AddressingMode) {
         // Copied from ror
         let val = self.read(addr);
-        let c = self.c;
-        self.c = val & 0x01 == 1;
+        let c = self.flags.c();
+        self.flags.set_c(val & 0x01 == 1);
         let n = (val >> 1) | ((c as u8) << 7);
         self.update_sz(n);
 
@@ -1076,11 +1087,12 @@ impl CPU6507 {
 
         // Copied from adc
         let val = n;
-        let n = (val as u16) + (self.a as u16) + (self.c as u16);
+        let n = (val as u16) + (self.a as u16) + (self.flags.c() as u16);
         let a = (n & 0xff) as u8;
         self.update_sz(a);
-        self.c = n > 0xff;
-        self.v = ((self.a ^ val) & 0x80 == 0) && ((self.a ^ n as u8) & 0x80 > 0);
+        self.flags.set_c(n > 0xff);
+        self.flags
+            .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ n as u8) & 0x80 > 0));
         self.a = a;
     }
 
