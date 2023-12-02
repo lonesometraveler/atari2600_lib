@@ -55,7 +55,7 @@ impl Playfield {
     pub fn set_pf0(&mut self, val: u8) {
         // PF0 is the first 4 bits, in big-endian order
         let val = reverse_bit_order(val);
-        self.pf_data.set_pf0(val);
+        self.pf_data.set_pf0(val & 0x0f);
     }
 
     pub fn set_pf1(&mut self, val: u8) {
