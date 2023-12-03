@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::{bus::Bus, memory::PiaAddress};
 
 #[allow(clippy::upper_case_acronyms)]
 // The RIOT (RAM/IO/Timer) chip. Also known as the PIA. It's a MOS 6532 chip.
@@ -149,59 +149,39 @@ impl RIOT {
 
 impl Bus for RIOT {
     fn read(&mut self, address: u16) -> u8 {
-        match address {
-            // RAM
-            0x0000..=0x007f => self.ram[address as usize],
-
-            // SWCHA   11111111  Port A; input or output  (read or write)
-            0x0280 => {
+        let pia_address = PiaAddress::from_address(address).unwrap();
+        use PiaAddress::*;
+        match pia_address {
+            RAM => self.ram[address as usize],
+            SWCHA => {
                 // The bits of SWACNT set the data direction for the corresponding bits of SWCHA, 0
                 // being for input, and 1 for output.
                 // So all this faffing about is to enforce this.
                 // This is also the case for SWCHB/SWBCNT.
                 (self.swcha & self.swacnt) | (self.port_a & (self.swacnt ^ 0xff))
             }
-
-            // SWCHB   11111111  Port B; console switches (read only)
-            0x0282 => (self.swchb & self.swbcnt) | (self.port_b & (self.swbcnt ^ 0xff)),
-
-            // INTIM   11111111  Timer output (read only)
-            0x0284 => self.intim,
-
-            // INSTAT  11......  Timer Status (read only, undocumented)
-            0x0285 => {
+            SWCHB => (self.swchb & self.swbcnt) | (self.port_b & (self.swbcnt ^ 0xff)),
+            INTIM => self.intim,
+            INSTAT => {
                 let rv = self.instat;
                 self.instat &= 0b1011_1111;
                 rv
             }
-
             _ => 0,
         }
     }
 
     fn write(&mut self, address: u16, val: u8) {
-        match address {
-            // RAM
-            0x0000..=0x007f => self.ram[address as usize] = val,
-
-            // SWACNT  11111111  Port A DDR, 0= input, 1=output
-            0x0281 => self.swacnt = val,
-
-            // SWBCNT  11111111  Port B DDR (hardwired as input)
-            0x0283 => self.swbcnt = val,
-
-            // TIM1T   11111111  set 1 clock interval (838 nsec/interval)
-            0x0294 => self.init_timer(val, 1),
-
-            // TIM8T   11111111  set 8 clock interval (6.7 usec/interval)
-            0x0295 => self.init_timer(val, 8),
-
-            // TIM64T  11111111  set 64 clock interval (53.6 usec/interval)
-            0x0296 => self.init_timer(val, 64),
-
-            // T1024T  11111111  set 1024 clock interval (858.2 usec/interval)
-            0x0297 => self.init_timer(val, 1024),
-
+        let pia_address = PiaAddress::from_address(address).unwrap();
+        use PiaAddress::*;
+        match pia_address {
+            RAM => self.ram[address as usize] = val,
+            SWACNT => self.swacnt = val,
+            SWBCNT => self.swbcnt = val,
+            TIM1T => self.init_timer(val, 1),
+            TIM8T => self.init_timer(val, 8),
+            TIM64T => self.init_timer(val, 64),
+            T1024T => self.init_timer(val, 1024),
             _ => {}
         }
     }
