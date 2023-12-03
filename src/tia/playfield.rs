@@ -1,28 +1,32 @@
 use super::SharedColor;
 use crate::tia::counter::Counter;
-use modular_bitfield::prelude::*;
-use std::array;
 
-const PF_LENGTH: usize = 20;
+#[allow(dead_code)]
+mod pf_data {
+    use modular_bitfield::prelude::*;
+    use std::array;
+    // 20-bit playfield
+    // .... | .... .... | .... ....
+    // PF0  |    PF1    |    PF2
+    #[derive(Clone, Copy)]
+    #[bitfield(bits = 20)]
+    pub(crate) struct PlayfieldData {
+        pub pf0: B4,
+        pub pf1: B8,
+        pub pf2: B8,
+    }
 
-// 20-bit playfield
-// .... | .... .... | .... ....
-// PF0  |    PF1    |    PF2
-#[derive(Clone, Copy)]
-#[bitfield(bits = 20)]
-struct PlayfieldData {
-    pf0: B4,
-    pf1: B8,
-    pf2: B8,
-}
-
-impl PlayfieldData {
-    // returns pf0, pf1, pf2 as [bool; PF_LENGTH]
-    fn bits(&self) -> [bool; PF_LENGTH] {
-        let val = (self.pf0() as u32) << 16 | (self.pf1() as u32) << 8 | self.pf2() as u32;
-        array::from_fn(|i| val & (1 << (19 - i)) != 0)
+    impl PlayfieldData {
+        // returns pf0, pf1, pf2 as [bool; 20]
+        pub fn bits(&self) -> [bool; 20] {
+            let val = (self.pf0() as u32) << 16 | (self.pf1() as u32) << 8 | self.pf2() as u32;
+            array::from_fn(|i| val & (1 << (19 - i)) != 0)
+        }
     }
 }
+use pf_data::PlayfieldData;
+
+const PF_LENGTH: usize = 20;
 
 pub(crate) struct Playfield {
     colors: SharedColor,
