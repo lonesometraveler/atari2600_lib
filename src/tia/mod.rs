@@ -7,9 +7,12 @@ mod palette;
 mod player;
 mod playfield;
 
-use crate::bus::Bus;
+use crate::{
+    bus::Bus,
+    memory::{TiaReadAddress, TiaWriteAddress},
+};
 use image::Rgba;
-use log::debug;
+use log::{debug, info};
 use std::{cell::RefCell, rc::Rc};
 use {
     ball::Ball,
@@ -383,293 +386,195 @@ impl Bus for TIA {
     // https://problemkaputt.de/2k6specs.htm#memoryandiomap
 
     fn read(&mut self, address: u16) -> u8 {
-        match address {
-            // CXM0P   11......  read collision M0-P1, M0-P0 (Bit 7,6)
-            0x0030 => self.cxm0p,
+        use TiaReadAddress::*;
+        if let Some(address) = TiaReadAddress::from_address(address) {
+            match address {
+                CXM0P => self.cxm0p,
+                CXM1P => self.cxm1p,
+                CXP0FB => self.cxp0fb,
+                CXP1FB => self.cxp1fb,
+                CXM0FB => self.cxm0fb,
+                CXM1FB => self.cxm1fb,
+                CXBLPF => self.cxblpf,
+                CXPPMM => self.cxppmm,
+                INPT4 => {
+                    // Check the logic level of the port
+                    let mut level = self.inpt4_port;
 
-            // CXM1P   11......  read collision M1-P0, M1-P1
-            0x0031 => self.cxm1p,
+                    // When the latch is enabled in D6 of VBLANK, check the latch value aswell
+                    if (self.vblank & 0x40) != 0 {
+                        level = level && self.inpt4_latch;
+                    }
 
-            // CXP0FB  11......  read collision P0-PF, P0-BL
-            0x0032 => self.cxp0fb,
-
-            // CXP1FB  11......  read collision P1-PF, P1-BL
-            0x0033 => self.cxp1fb,
-
-            // CXM0FB  11......  read collision M0-PF, M0-BL
-            0x0034 => self.cxm0fb,
-
-            // CXM1FB  11......  read collision M1-PF, M1-BL
-            0x0035 => self.cxm1fb,
-
-            // CXBLPF  1.......  read collision BL-PF, unused
-            0x0036 => self.cxblpf,
-
-            // CXPPMM  11......  read collision P0-P1, M0-M1
-            0x0037 => self.cxppmm,
-
-            // INPT4   1.......  read input
-            0x003C => {
-                // Check the logic level of the port
-                let mut level = self.inpt4_port;
-
-                // When the latch is enabled in D6 of VBLANK, check the latch value aswell
-                if (self.vblank & 0x40) != 0 {
-                    level = level && self.inpt4_latch;
+                    if level {
+                        0x80
+                    } else {
+                        0x00
+                    }
                 }
-
-                if level {
-                    0x80
-                } else {
-                    0x00
-                }
+                _ => 0,
             }
-
-            _ => 0,
+        } else {
+            info!("Invalid TIA read address: {:04X}", address);
+            0
         }
     }
 
     fn write(&mut self, address: u16, val: u8) {
-        match address {
-            //
-            // Frame timing and synchronisation
-            //
+        use TiaWriteAddress::*;
+        if let Some(address) = TiaWriteAddress::from_address(address) {
+            match address {
+                //
+                // Frame timing and synchronisation
+                //
+                VSYNC => self.vsync = (val & 0x02) != 0,
+                VBLANK => {
+                    self.vblank = val;
 
-            // VSYNC   ......1.  vertical sync set-clear
-            0x0000 => self.vsync = (val & 0x02) != 0,
+                    if (val & 0x80) != 0 {
+                        // INPT4-5 latches are reset when D6 of VBLANK is 1
+                        self.reset_latches();
+                    }
+                }
+                WSYNC => self.wsync = true,
+                // TODO: Commenting this out fixes the frame shifted bown by 1 pixel
+                // RSYNC   <strobe>  reset horizontal sync counter
+                // from TIA_HW_Notes.txt:
+                //
+                // "RSYNC resets the two-phase clock for the HSync counter to the H@1
+                // rising edge when strobed."
+                RSYNC => self.ctr.reset_to_h1(),
 
-            // VBLANK  11....1.  vertical blank set-clear
-            0x0001 => {
-                self.vblank = val;
+                //
+                // Colors
+                //
+                COLUP0 => self.colors.borrow_mut().set_colup0(val & 0xfe),
+                COLUP1 => self.colors.borrow_mut().set_colup1(val & 0xfe),
+                COLUPF => self.colors.borrow_mut().set_colupf(val & 0xfe),
+                COLUBK => self.colors.borrow_mut().set_colubk(val & 0xfe),
+                CTRLPF => {
+                    self.pf.set_control(val);
+                    self.bl.set_nusiz(1 << ((val & 0b0011_0000) >> 4));
+                }
 
-                if (val & 0x80) != 0 {
-                    // INPT4-5 latches are reset when D6 of VBLANK is 1
-                    self.reset_latches();
+                //
+                // Playfield
+                //
+                PF0 => self.pf.set_pf0(val),
+                PF1 => self.pf.set_pf1(val),
+                PF2 => self.pf.set_pf2(val),
+
+                //
+                // Sprites
+                //
+                NUSIZ0 => {
+                    let player_copies = val & 0b0000_0111;
+
+                    self.m0.set_nusiz(val as usize);
+                    self.p0.set_nusiz(player_copies as usize);
+                }
+                NUSIZ1 => {
+                    let player_copies = val & 0b0000_0111;
+
+                    self.m1.set_nusiz(val as usize);
+                    self.p1.set_nusiz(player_copies as usize);
+                }
+                REFP0 => self.p0.set_horizontal_mirror((val & 0b0000_1000) != 0),
+                REFP1 => self.p1.set_horizontal_mirror((val & 0b0000_1000) != 0),
+                RESP0 => {
+                    // If the write takes place anywhere within horizontal blanking
+                    // then the position is set to the left edge of the screen (plus
+                    // a few pixels towards right: 3 pixels for P0/P1, and only 2
+                    // pixels for M0/M1/BL).
+                    self.p0.reset();
+                }
+                RESP1 => {
+                    self.p1.reset();
+                }
+                RESM0 => self.m0.reset(),
+                RESM1 => self.m1.reset(),
+                RESBL => self.bl.reset(),
+                AUDC0 => {
+                    debug!("AUDC0: {}", val)
+                }
+                AUDC1 => {
+                    debug!("AUDC1: {}", val)
+                }
+                AUDF0 => {
+                    debug!("AUDF0: {}", val)
+                }
+                AUDF1 => {
+                    debug!("AUDF1: {}", val)
+                }
+                AUDV0 => {
+                    debug!("AUDV0: {}", val)
+                }
+                AUDV1 => {
+                    debug!("AUDV1: {}", val)
+                }
+                GRP0 => {
+                    self.p0.set_graphic(val);
+                    self.p1.set_vdel_value();
+                }
+                GRP1 => {
+                    self.p1.set_graphic(val);
+                    self.p0.set_vdel_value();
+                    self.bl.set_vdel_value();
+                }
+                ENAM0 => self.m0.set_enabled((val & 0x02) != 0),
+                ENAM1 => self.m1.set_enabled((val & 0x02) != 0),
+                ENABL => self.bl.set_enabled((val & 0x02) != 0),
+
+                //
+                // Horizontal motion
+                //
+                HMP0 => self.p0.set_hmove_value(val),
+                HMP1 => self.p1.set_hmove_value(val),
+                HMM0 => self.m0.set_hmove_value(val),
+                HMM1 => self.m1.set_hmove_value(val),
+                HMBL => self.bl.set_hmove_value(val),
+                VDELP0 => self.p0.set_vdel((val & 0x01) != 0),
+                VDELP1 => self.p1.set_vdel((val & 0x01) != 0),
+                VDELBL => self.bl.set_vdel((val & 0x01) != 0),
+                RESMP0 => {
+                    if (val & 0x02) != 0 {
+                        self.m0.reset_to_player(&self.p0);
+                    }
+                }
+                RESMP1 => {
+                    if (val & 0x02) != 0 {
+                        self.m1.reset_to_player(&self.p1);
+                    }
+                }
+                HMOVE => {
+                    self.bl.start_hmove();
+                    self.m0.start_hmove();
+                    self.m1.start_hmove();
+                    self.p0.start_hmove();
+                    self.p1.start_hmove();
+
+                    self.late_reset_hblank = true;
+                }
+                HMCLR => {
+                    self.bl.hmclr();
+                    self.m0.hmclr();
+                    self.m1.hmclr();
+                    self.p0.hmclr();
+                    self.p1.hmclr();
+                }
+                CXCLR => {
+                    self.cxm0p = 0;
+                    self.cxm1p = 0;
+                    self.cxp0fb = 0;
+                    self.cxp1fb = 0;
+                    self.cxm0fb = 0;
+                    self.cxm1fb = 0;
+                    self.cxblpf = 0;
+                    self.cxppmm = 0;
                 }
             }
-
-            // WSYNC   <strobe>  wait for leading edge of horizontal blank
-            0x0002 => self.wsync = true,
-
-            // TODO: Commenting this out fixes the frame shifted bown by 1 pixel
-            // RSYNC   <strobe>  reset horizontal sync counter
-            // from TIA_HW_Notes.txt:
-            //
-            // "RSYNC resets the two-phase clock for the HSync counter to the H@1
-            // rising edge when strobed."
-            0x0003 => self.ctr.reset_to_h1(),
-
-            //
-            // Colors
-            //
-
-            // COLUP0  1111111.  color-lum player 0 and missile 0
-            0x0006 => self.colors.borrow_mut().set_colup0(val & 0xfe),
-
-            // COLUP1  1111111.  color-lum player 1 and missile 1
-            0x0007 => self.colors.borrow_mut().set_colup1(val & 0xfe),
-
-            // COLUPF  1111111.  color-lum playfield and ball
-            0x0008 => self.colors.borrow_mut().set_colupf(val & 0xfe),
-
-            // COLUBK  1111111.  color-lum background
-            0x0009 => self.colors.borrow_mut().set_colubk(val & 0xfe),
-
-            // CTRLPF  ..11.111  control playfield ball size & collisions
-            0x000a => {
-                self.pf.set_control(val);
-                self.bl.set_nusiz(1 << ((val & 0b0011_0000) >> 4));
-            }
-
-            //
-            // Playfield
-            //
-
-            // PF0     1111....  playfield register byte 0
-            0x000d => self.pf.set_pf0(val),
-
-            // PF1     11111111  playfield register byte 1
-            0x000e => self.pf.set_pf1(val),
-
-            // PF2     11111111  playfield register byte 2
-            0x000f => self.pf.set_pf2(val),
-
-            //
-            // Sprites
-            //
-
-            // NUSIZ0  ..11.111  number-size player-missile 0
-            0x0004 => {
-                let player_copies = val & 0b0000_0111;
-
-                self.m0.set_nusiz(val as usize);
-                self.p0.set_nusiz(player_copies as usize);
-            }
-
-            // NUSIZ1  ..11.111  number-size player-missile 1
-            0x0005 => {
-                let player_copies = val & 0b0000_0111;
-
-                self.m1.set_nusiz(val as usize);
-                self.p1.set_nusiz(player_copies as usize);
-            }
-
-            // REFP0   ....1...  reflect player 0
-            0x000b => self.p0.set_horizontal_mirror((val & 0b0000_1000) != 0),
-
-            // REFP1   ....1...  reflect player 1
-            0x000c => self.p1.set_horizontal_mirror((val & 0b0000_1000) != 0),
-
-            // RESP0   <strobe>  reset player 0
-            0x0010 => {
-                // If the write takes place anywhere within horizontal blanking
-                // then the position is set to the left edge of the screen (plus
-                // a few pixels towards right: 3 pixels for P0/P1, and only 2
-                // pixels for M0/M1/BL).
-                self.p0.reset();
-            }
-
-            // RESP1   <strobe>  reset player 1
-            0x0011 => {
-                self.p1.reset();
-            }
-
-            // RESM0   <strobe>  reset missile 0
-            0x0012 => self.m0.reset(),
-
-            // RESM1   <strobe>  reset missile 1
-            0x0013 => self.m1.reset(),
-
-            // RESBL   <strobe>  reset ball
-            0x0014 => self.bl.reset(),
-
-            // AUDV0
-            0x0015 => {
-                debug!("AUDV0: {}", val)
-            }
-
-            // AUDV1
-            0x0016 => {
-                debug!("AUDV1: {}", val)
-            }
-
-            // AUDF0
-            0x0017 => {
-                debug!("AUDF0: {}", val)
-            }
-
-            // AUDF1
-            0x0018 => {
-                debug!("AUDF1: {}", val)
-            }
-
-            // AUDC0
-            0x0019 => {
-                debug!("AUDC0: {}", val)
-            }
-
-            // AUDC1
-            0x001a => {
-                debug!("AUDC1: {}", val)
-            }
-
-            // GRP0    11111111  graphics player 0
-            0x001b => {
-                self.p0.set_graphic(val);
-                self.p1.set_vdel_value();
-            }
-
-            // GRP1    11111111  graphics player 1
-            0x001c => {
-                self.p1.set_graphic(val);
-                self.p0.set_vdel_value();
-                self.bl.set_vdel_value();
-            }
-
-            // ENAM0   ......1.  graphics (enable) missile 0
-            0x001d => self.m0.set_enabled((val & 0x02) != 0),
-
-            // ENAM1   ......1.  graphics (enable) missile 1
-            0x001e => self.m1.set_enabled((val & 0x02) != 0),
-
-            // ENABL   ......1.  graphics (enable) ball
-            0x001f => self.bl.set_enabled((val & 0x02) != 0),
-
-            //
-            // Horizontal motion
-            //
-
-            // HMP0    1111....  horizontal motion player 0
-            0x0020 => self.p0.set_hmove_value(val),
-
-            // HMP1    1111....  horizontal motion player 1
-            0x0021 => self.p1.set_hmove_value(val),
-
-            // HMM0    1111....  horizontal motion missile 0
-            0x0022 => self.m0.set_hmove_value(val),
-
-            // HMM1    1111....  horizontal motion missile 1
-            0x0023 => self.m1.set_hmove_value(val),
-
-            // HMBL    1111....  horizontal motion ball
-            0x0024 => self.bl.set_hmove_value(val),
-
-            // VDELP0  .......1  vertical delay player 0
-            0x0025 => self.p0.set_vdel((val & 0x01) != 0),
-
-            // VDELP1  .......1  vertical delay player 1
-            0x0026 => self.p1.set_vdel((val & 0x01) != 0),
-
-            // VDELBL  .......1  vertical delay ball
-            0x0027 => self.bl.set_vdel((val & 0x01) != 0),
-
-            // RESMP0  ......1.  reset missile 0 to player 0
-            0x0028 => {
-                if (val & 0x02) != 0 {
-                    self.m0.reset_to_player(&self.p0);
-                }
-            }
-
-            // RESMP1  ......1.  reset missile 1 to player 1
-            0x0029 => {
-                if (val & 0x02) != 0 {
-                    self.m1.reset_to_player(&self.p1);
-                }
-            }
-
-            // HMOVE   <strobe>  apply horizontal motion
-            0x002a => {
-                self.bl.start_hmove();
-                self.m0.start_hmove();
-                self.m1.start_hmove();
-                self.p0.start_hmove();
-                self.p1.start_hmove();
-
-                self.late_reset_hblank = true;
-            }
-
-            // HMCLR   <strobe>  clear horizontal motion registers
-            0x002b => {
-                self.bl.hmclr();
-                self.m0.hmclr();
-                self.m1.hmclr();
-                self.p0.hmclr();
-                self.p1.hmclr();
-            }
-
-            // CXCLR   <strobe>  clear collision latches
-            0x002C => {
-                self.cxm0p = 0;
-                self.cxm1p = 0;
-                self.cxp0fb = 0;
-                self.cxp1fb = 0;
-                self.cxm0fb = 0;
-                self.cxm1fb = 0;
-                self.cxblpf = 0;
-                self.cxppmm = 0;
-            }
-
-            _ => {}
+        } else {
+            info!("Unimplemented write to TIA address {:04x}", address);
         }
     }
 }
