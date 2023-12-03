@@ -8,20 +8,19 @@ mod player;
 mod playfield;
 
 use crate::bus::Bus;
-use crate::tia::ball::Ball;
-use crate::tia::color::Colors;
-use crate::tia::counter::Counter;
-use crate::tia::graphic::Graphic;
-use crate::tia::missile::Missile;
-use crate::tia::palette::DEFAULT_COLOR;
-use crate::tia::player::Player;
-use crate::tia::playfield::Playfield;
 use image::Rgba;
-use std::{cell::RefCell, rc::Rc};
-
 use log::debug;
-
-use self::palette::NTSC_PALETTE;
+use std::{cell::RefCell, rc::Rc};
+use {
+    ball::Ball,
+    color::Colors,
+    counter::Counter,
+    graphic::Graphic,
+    missile::Missile,
+    palette::{DEFAULT_COLOR, NTSC_PALETTE},
+    player::Player,
+    playfield::Playfield,
+};
 
 pub type SharedColor = Rc<RefCell<Colors>>;
 
@@ -31,26 +30,24 @@ pub enum PlayerType {
     Player1,
 }
 
-// Set H-SYNC
-const SHS: u8 = 4;
-
-// Reset H-SYNC
-const RHS: u8 = 8;
-
-// ColourBurst
-const RCB: u8 = 12;
-
-// Reset H-BLANK
-const RHB: u8 = 16;
-
-// Late RHB
-const LRHB: u8 = 18;
-
-// Center
-const CNT: u8 = 36;
-
-// RESET, H-BLANK
-const SHB: u8 = 56;
+struct Signals;
+// https://github.com/jigo2600/jigo2600/blob/master/doc/TIA_Visual_Objects.md
+impl Signals {
+    // Set H-SYNC. The SHS signal is used to set the horizontal sync  HS signal and, together with RHS, it shapes it.
+    const SHS: u8 = 4;
+    // Reset H-SYNC. The RHS signal resets the horizontal sync HS signal and triggers the color burst CB signal.
+    const RHS: u8 = 8;
+    // ColourBurst. The RCB signal resets the color burst CB.
+    const RCB: u8 = 12;
+    // Reset H-BLANK. The RHB signal resets the HBLANK HB signal. It can be ignored for LRHB depending on the HMOVEL latch.
+    const RHB: u8 = 16;
+    // Late RHB. The LRHB signal resets the HBLANK HB signal later. It can be ignored for RHB depending on the HMOVEL latch.
+    const LRHB: u8 = 18;
+    // Center. The playfield center signal CNT is starts to draw the second part of the playfield.
+    const CNT: u8 = 36;
+    // RESET, H-BLANK. The SHB signal is used to set HB and clear HC.
+    const SHB: u8 = 56;
+}
 
 #[allow(clippy::upper_case_acronyms)]
 pub struct TIA {
@@ -279,11 +276,13 @@ impl TIA {
     }
 
     fn visible_cycle(&self) -> bool {
-        self.ctr.value() > RHB && self.ctr.value() <= SHB
+        self.ctr.value() > Signals::RHB && self.ctr.value() <= Signals::SHB
     }
 
     fn in_late_reset(&self) -> bool {
-        self.late_reset_hblank && self.ctr.value() > RHB && self.ctr.value() <= LRHB
+        self.late_reset_hblank
+            && self.ctr.value() > Signals::RHB
+            && self.ctr.value() <= Signals::LRHB
     }
 
     pub fn clock(&mut self) {
@@ -324,8 +323,8 @@ impl TIA {
                     self.wsync = false;
                     self.late_reset_hblank = false;
                 }
-                RHB => { /* Reset HBlank */ }
-                LRHB => { /* Late Reset HBlank */ }
+                Signals::RHB => { /* Reset HBlank */ }
+                Signals::LRHB => { /* Late Reset HBlank */ }
                 _ => {}
             }
         }
@@ -452,7 +451,7 @@ impl Bus for TIA {
             // WSYNC   <strobe>  wait for leading edge of horizontal blank
             0x0002 => self.wsync = true,
 
-            // TODO: comment this out fixes the frame shifted bown by 1 pixel
+            // TODO: Commenting this out fixes the frame shifted bown by 1 pixel
             // RSYNC   <strobe>  reset horizontal sync counter
             // from TIA_HW_Notes.txt:
             //
