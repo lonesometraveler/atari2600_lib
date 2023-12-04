@@ -22,6 +22,8 @@ use {
     playfield::Playfield,
 };
 
+const LINE_LENGTH: usize = 160;
+
 pub type SharedColor = Rc<RefCell<Colors>>;
 
 #[derive(Debug)]
@@ -89,7 +91,7 @@ pub struct TIA {
 
     // One scanline of pixels to be rendered. It's up to the calling code to call
     // `get_scanline_pixels` at the end of each scanline.
-    pixels: Vec<Rgba<u8>>,
+    pixels: [Rgba<u8>; LINE_LENGTH],
 }
 
 impl Default for TIA {
@@ -137,7 +139,7 @@ impl Default for TIA {
             p0,
             p1,
 
-            pixels: vec![Rgba([0, 0, 0, 0]); 160],
+            pixels: [Rgba([0, 0, 0, 0]); LINE_LENGTH],
         }
     }
 }
@@ -159,7 +161,7 @@ impl TIA {
         self.wsync
     }
 
-    pub fn get_scanline_pixels(&self) -> &Vec<Rgba<u8>> {
+    pub fn get_scanline_pixels(&self) -> &[Rgba<u8>; LINE_LENGTH] {
         &self.pixels
     }
 
