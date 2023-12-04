@@ -1,6 +1,8 @@
 mod bus;
 mod cpu6507;
 mod debugger;
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) mod memory;
 mod opcode;
 mod riot;
 mod tia;

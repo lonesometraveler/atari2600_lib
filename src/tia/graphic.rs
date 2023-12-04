@@ -60,7 +60,7 @@ pub(crate) trait Graphic {
     // Method to get the color of the pixel
     fn get_color(&self) -> Option<u8>;
 
-    /// Updates the graphic scan circuit based on the current state of the TiaObject.
+    /// Updates the graphic scan circuit based on the current state of the TIA object.
     /// This method is responsible for advancing the graphic scan, determining
     /// pixel values, and managing the scan counter state.
     /// - If the scan counter has an active bit index, it progresses through the
