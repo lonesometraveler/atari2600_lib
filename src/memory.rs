@@ -96,7 +96,7 @@ pub enum TiaWriteAddress {
     NUSIZ0, // 04 - ..11.111 Number-size player-missile 0
     NUSIZ1, // 05 - ..11.111 Number-size player-missile 1
     COLUP0, // 06 - 1111111. Color-lum player 0 and missile 0
-    COLUP1, // 07 - 1111111.Color-lum player 1 and missile 1
+    COLUP1, // 07 - 1111111. Color-lum player 1 and missile 1
     COLUPF, // 08 - 1111111. Color-lum playfield and ball
     COLUBK, // 09 - 1111111. Color-lum background
     CTRLPF, // 0A - ..11.111 Control playfield ball size & collisions
@@ -195,7 +195,7 @@ impl TryFrom<u16> for TiaWriteAddress {
 pub enum PiaAddress {
     RAM(usize), // 00..=7F - 128 bytes RAM (in PIA chip) for variables and stack
     SWCHA,      // 0280 - Port A; input or output (read or write)
-    SWACNT,     // 0281 - Port A DDR, 0= input, 1=output (read or write)
+    SWACNT,     // 0281 - Port A DDR, 0=input, 1=output (read or write)
     SWCHB,      // 0282 - Port B; console switches (read only)
     SWBCNT,     // 0283 - Port B DDR (hardwired as input) (read only)
     INTIM,      // 0284 - Timer output (read only)
