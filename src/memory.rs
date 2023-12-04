@@ -1,4 +1,61 @@
+use std::error::Error;
+
 // https://problemkaputt.de/2k6specs.htm#memoryandiomap
+pub enum Operation {
+    Read,
+    Write,
+}
+
+// https://problemkaputt.de/2k6specs.htm#memorymirrors
+pub enum MemoryMirrors {
+    Cartridge(usize),
+    TiaRead(TiaReadAddress),
+    TiaWrite(TiaWriteAddress),
+    PiaIO(PiaAddress),
+    PiaRam(PiaAddress),
+}
+
+impl MemoryMirrors {
+    pub fn from(address: u16, op: Operation) -> Result<Self, Box<dyn Error>> {
+        const A12: u16 = 0b0001_0000_0000_0000; // 0x1000
+        const A9: u16 = 0b0000_0010_0000_0000; // 0x0200
+        const A7: u16 = 0b0000_0000_1000_0000; // 0x0080
+
+        match address {
+            // Cartridge memory is selected by A12=1
+            a if a & A12 != 0 => Ok(Self::Cartridge(address as usize & 0xfff)),
+            // PIA I/O is selected by A12=0, A9=1, A7=1
+            a if a & (A12 | A9 | A7) == A9 | A7 => Ok(Self::PiaIO(
+                PiaAddress::from_address(address & 0x2ff).unwrap(),
+            )),
+
+            // PIA RAM is selected by A12=0, A9=0, A7=1
+            a if a & A7 == A7 => Ok(Self::PiaRam(
+                PiaAddress::from_address(address & 0x7f).unwrap(),
+            )),
+            // The TIA chip is addressed by A12=0, A7=0
+            a if a & A7 == 0 => match op {
+                Operation::Read => Ok(Self::TiaRead(
+                    match TiaReadAddress::from_address((address & 0x0f) | 0x30) {
+                        Some(address) => address,
+                        None => {
+                            return Err(format!("Invalid TIA Read address: {:X}", address).into());
+                        }
+                    },
+                )),
+                Operation::Write => Ok(Self::TiaWrite(
+                    match TiaWriteAddress::from_address(address & 0x3f) {
+                        Some(address) => address,
+                        None => {
+                            return Err(format!("Invalid TIA Write address: {:X}", address).into());
+                        }
+                    },
+                )),
+            },
+            _ => Err(format!("Invalid address: {:X}", address).into()),
+        }
+    }
+}
 
 #[derive(Debug)]
 // Enum representing TIA read addresses
@@ -149,24 +206,24 @@ impl TiaWriteAddress {
 #[derive(Debug)]
 // Enum representing PIA 6532 addresses for read and write operations
 pub enum PiaAddress {
-    RAM,    // 00..=7F - 128 bytes RAM (in PIA chip) for variables and stack
-    SWCHA,  // 0280 - Port A; input or output (read or write)
-    SWACNT, // 0281 - Port A DDR, 0= input, 1=output (read or write)
-    SWCHB,  // 0282 - Port B; console switches (read only)
-    SWBCNT, // 0283 - Port B DDR (hardwired as input) (read only)
-    INTIM,  // 0284 - Timer output (read only)
-    INSTAT, // 0285 - Timer Status (read only, undocumented)
-    TIM1T,  // 0294 - Set 1 clock interval (838 nsec/interval) (read or write)
-    TIM8T,  // 0295 - Set 8 clock interval (6.7 usec/interval) (read or write)
-    TIM64T, // 0296 - Set 64 clock interval (53.6 usec/interval) (read or write)
-    T1024T, // 0297 - Set 1024 clock interval (858.2 usec/interval) (read or write)
+    RAM(usize), // 00..=7F - 128 bytes RAM (in PIA chip) for variables and stack
+    SWCHA,      // 0280 - Port A; input or output (read or write)
+    SWACNT,     // 0281 - Port A DDR, 0= input, 1=output (read or write)
+    SWCHB,      // 0282 - Port B; console switches (read only)
+    SWBCNT,     // 0283 - Port B DDR (hardwired as input) (read only)
+    INTIM,      // 0284 - Timer output (read only)
+    INSTAT,     // 0285 - Timer Status (read only, undocumented)
+    TIM1T,      // 0294 - Set 1 clock interval (838 nsec/interval) (read or write)
+    TIM8T,      // 0295 - Set 8 clock interval (6.7 usec/interval) (read or write)
+    TIM64T,     // 0296 - Set 64 clock interval (53.6 usec/interval) (read or write)
+    T1024T,     // 0297 - Set 1024 clock interval (858.2 usec/interval) (read or write)
 }
 
 impl PiaAddress {
     // Method to create enum variant from an address
     pub fn from_address(address: u16) -> Option<Self> {
         match address {
-            0x0000..=0x007F => Some(Self::RAM),
+            0x0000..=0x007F => Some(Self::RAM(address as usize)),
             0x0280 => Some(Self::SWCHA), // Initialize with a dummy value
             0x0281 => Some(Self::SWACNT),
             0x0282 => Some(Self::SWCHB),

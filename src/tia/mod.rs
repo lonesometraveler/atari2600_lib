@@ -7,12 +7,9 @@ mod palette;
 mod player;
 mod playfield;
 
-use crate::{
-    bus::Bus,
-    memory::{TiaReadAddress, TiaWriteAddress},
-};
+use crate::memory::{TiaReadAddress, TiaWriteAddress};
 use image::Rgba;
-use log::{debug, info};
+use log::debug;
 use std::{cell::RefCell, rc::Rc};
 use {
     ball::Ball,
@@ -382,199 +379,188 @@ impl TIA {
     // }
 }
 
-impl Bus for TIA {
-    // https://problemkaputt.de/2k6specs.htm#memoryandiomap
-
-    fn read(&mut self, address: u16) -> u8 {
+impl TIA {
+    pub fn read(&mut self, address: TiaReadAddress) -> u8 {
         use TiaReadAddress::*;
-        if let Some(address) = TiaReadAddress::from_address(address) {
-            match address {
-                CXM0P => self.cxm0p,
-                CXM1P => self.cxm1p,
-                CXP0FB => self.cxp0fb,
-                CXP1FB => self.cxp1fb,
-                CXM0FB => self.cxm0fb,
-                CXM1FB => self.cxm1fb,
-                CXBLPF => self.cxblpf,
-                CXPPMM => self.cxppmm,
-                INPT4 => {
-                    // Check the logic level of the port
-                    let mut level = self.inpt4_port;
+        match address {
+            CXM0P => self.cxm0p,
+            CXM1P => self.cxm1p,
+            CXP0FB => self.cxp0fb,
+            CXP1FB => self.cxp1fb,
+            CXM0FB => self.cxm0fb,
+            CXM1FB => self.cxm1fb,
+            CXBLPF => self.cxblpf,
+            CXPPMM => self.cxppmm,
+            INPT4 => {
+                // Check the logic level of the port
+                let mut level = self.inpt4_port;
 
-                    // When the latch is enabled in D6 of VBLANK, check the latch value aswell
-                    if (self.vblank & 0x40) != 0 {
-                        level = level && self.inpt4_latch;
-                    }
-
-                    if level {
-                        0x80
-                    } else {
-                        0x00
-                    }
+                // When the latch is enabled in D6 of VBLANK, check the latch value aswell
+                if (self.vblank & 0x40) != 0 {
+                    level = level && self.inpt4_latch;
                 }
-                _ => 0,
+
+                if level {
+                    0x80
+                } else {
+                    0x00
+                }
             }
-        } else {
-            info!("Invalid TIA read address: {:04X}", address);
-            0
+            _ => 0,
         }
     }
 
-    fn write(&mut self, address: u16, val: u8) {
+    pub fn write(&mut self, address: TiaWriteAddress, val: u8) {
         use TiaWriteAddress::*;
-        if let Some(address) = TiaWriteAddress::from_address(address) {
-            match address {
-                //
-                // Frame timing and synchronisation
-                //
-                VSYNC => self.vsync = (val & 0x02) != 0,
-                VBLANK => {
-                    self.vblank = val;
+        match address {
+            //
+            // Frame timing and synchronisation
+            //
+            VSYNC => self.vsync = (val & 0x02) != 0,
+            VBLANK => {
+                self.vblank = val;
 
-                    if (val & 0x80) != 0 {
-                        // INPT4-5 latches are reset when D6 of VBLANK is 1
-                        self.reset_latches();
-                    }
-                }
-                WSYNC => self.wsync = true,
-                // TODO: Commenting this out fixes the frame shifted bown by 1 pixel
-                // RSYNC   <strobe>  reset horizontal sync counter
-                // from TIA_HW_Notes.txt:
-                //
-                // "RSYNC resets the two-phase clock for the HSync counter to the H@1
-                // rising edge when strobed."
-                RSYNC => self.ctr.reset_to_h1(),
-
-                //
-                // Colors
-                //
-                COLUP0 => self.colors.borrow_mut().set_colup0(val & 0xfe),
-                COLUP1 => self.colors.borrow_mut().set_colup1(val & 0xfe),
-                COLUPF => self.colors.borrow_mut().set_colupf(val & 0xfe),
-                COLUBK => self.colors.borrow_mut().set_colubk(val & 0xfe),
-                CTRLPF => {
-                    self.pf.set_control(val);
-                    self.bl.set_nusiz(1 << ((val & 0b0011_0000) >> 4));
-                }
-
-                //
-                // Playfield
-                //
-                PF0 => self.pf.set_pf0(val),
-                PF1 => self.pf.set_pf1(val),
-                PF2 => self.pf.set_pf2(val),
-
-                //
-                // Sprites
-                //
-                NUSIZ0 => {
-                    let player_copies = val & 0b0000_0111;
-
-                    self.m0.set_nusiz(val as usize);
-                    self.p0.set_nusiz(player_copies as usize);
-                }
-                NUSIZ1 => {
-                    let player_copies = val & 0b0000_0111;
-
-                    self.m1.set_nusiz(val as usize);
-                    self.p1.set_nusiz(player_copies as usize);
-                }
-                REFP0 => self.p0.set_horizontal_mirror((val & 0b0000_1000) != 0),
-                REFP1 => self.p1.set_horizontal_mirror((val & 0b0000_1000) != 0),
-                RESP0 => {
-                    // If the write takes place anywhere within horizontal blanking
-                    // then the position is set to the left edge of the screen (plus
-                    // a few pixels towards right: 3 pixels for P0/P1, and only 2
-                    // pixels for M0/M1/BL).
-                    self.p0.reset();
-                }
-                RESP1 => {
-                    self.p1.reset();
-                }
-                RESM0 => self.m0.reset(),
-                RESM1 => self.m1.reset(),
-                RESBL => self.bl.reset(),
-                AUDC0 => {
-                    debug!("AUDC0: {}", val)
-                }
-                AUDC1 => {
-                    debug!("AUDC1: {}", val)
-                }
-                AUDF0 => {
-                    debug!("AUDF0: {}", val)
-                }
-                AUDF1 => {
-                    debug!("AUDF1: {}", val)
-                }
-                AUDV0 => {
-                    debug!("AUDV0: {}", val)
-                }
-                AUDV1 => {
-                    debug!("AUDV1: {}", val)
-                }
-                GRP0 => {
-                    self.p0.set_graphic(val);
-                    self.p1.set_vdel_value();
-                }
-                GRP1 => {
-                    self.p1.set_graphic(val);
-                    self.p0.set_vdel_value();
-                    self.bl.set_vdel_value();
-                }
-                ENAM0 => self.m0.set_enabled((val & 0x02) != 0),
-                ENAM1 => self.m1.set_enabled((val & 0x02) != 0),
-                ENABL => self.bl.set_enabled((val & 0x02) != 0),
-
-                //
-                // Horizontal motion
-                //
-                HMP0 => self.p0.set_hmove_value(val),
-                HMP1 => self.p1.set_hmove_value(val),
-                HMM0 => self.m0.set_hmove_value(val),
-                HMM1 => self.m1.set_hmove_value(val),
-                HMBL => self.bl.set_hmove_value(val),
-                VDELP0 => self.p0.set_vdel((val & 0x01) != 0),
-                VDELP1 => self.p1.set_vdel((val & 0x01) != 0),
-                VDELBL => self.bl.set_vdel((val & 0x01) != 0),
-                RESMP0 => {
-                    if (val & 0x02) != 0 {
-                        self.m0.reset_to_player(&self.p0);
-                    }
-                }
-                RESMP1 => {
-                    if (val & 0x02) != 0 {
-                        self.m1.reset_to_player(&self.p1);
-                    }
-                }
-                HMOVE => {
-                    self.bl.start_hmove();
-                    self.m0.start_hmove();
-                    self.m1.start_hmove();
-                    self.p0.start_hmove();
-                    self.p1.start_hmove();
-
-                    self.late_reset_hblank = true;
-                }
-                HMCLR => {
-                    self.bl.hmclr();
-                    self.m0.hmclr();
-                    self.m1.hmclr();
-                    self.p0.hmclr();
-                    self.p1.hmclr();
-                }
-                CXCLR => {
-                    self.cxm0p = 0;
-                    self.cxm1p = 0;
-                    self.cxp0fb = 0;
-                    self.cxp1fb = 0;
-                    self.cxm0fb = 0;
-                    self.cxm1fb = 0;
-                    self.cxblpf = 0;
-                    self.cxppmm = 0;
+                if (val & 0x80) != 0 {
+                    // INPT4-5 latches are reset when D6 of VBLANK is 1
+                    self.reset_latches();
                 }
             }
-        } else {
-            info!("Unimplemented write to TIA address {:04x}", address);
+            WSYNC => self.wsync = true,
+            // TODO: Commenting this out fixes the frame shifted bown by 1 pixel
+            // RSYNC   <strobe>  reset horizontal sync counter
+            // from TIA_HW_Notes.txt:
+            //
+            // "RSYNC resets the two-phase clock for the HSync counter to the H@1
+            // rising edge when strobed."
+            RSYNC => self.ctr.reset_to_h1(),
+
+            //
+            // Colors
+            //
+            COLUP0 => self.colors.borrow_mut().set_colup0(val & 0xfe),
+            COLUP1 => self.colors.borrow_mut().set_colup1(val & 0xfe),
+            COLUPF => self.colors.borrow_mut().set_colupf(val & 0xfe),
+            COLUBK => self.colors.borrow_mut().set_colubk(val & 0xfe),
+            CTRLPF => {
+                self.pf.set_control(val);
+                self.bl.set_nusiz(1 << ((val & 0b0011_0000) >> 4));
+            }
+
+            //
+            // Playfield
+            //
+            PF0 => self.pf.set_pf0(val),
+            PF1 => self.pf.set_pf1(val),
+            PF2 => self.pf.set_pf2(val),
+
+            //
+            // Sprites
+            //
+            NUSIZ0 => {
+                let player_copies = val & 0b0000_0111;
+
+                self.m0.set_nusiz(val as usize);
+                self.p0.set_nusiz(player_copies as usize);
+            }
+            NUSIZ1 => {
+                let player_copies = val & 0b0000_0111;
+
+                self.m1.set_nusiz(val as usize);
+                self.p1.set_nusiz(player_copies as usize);
+            }
+            REFP0 => self.p0.set_horizontal_mirror((val & 0b0000_1000) != 0),
+            REFP1 => self.p1.set_horizontal_mirror((val & 0b0000_1000) != 0),
+            RESP0 => {
+                // If the write takes place anywhere within horizontal blanking
+                // then the position is set to the left edge of the screen (plus
+                // a few pixels towards right: 3 pixels for P0/P1, and only 2
+                // pixels for M0/M1/BL).
+                self.p0.reset();
+            }
+            RESP1 => {
+                self.p1.reset();
+            }
+            RESM0 => self.m0.reset(),
+            RESM1 => self.m1.reset(),
+            RESBL => self.bl.reset(),
+            AUDC0 => {
+                debug!("AUDC0: {}", val)
+            }
+            AUDC1 => {
+                debug!("AUDC1: {}", val)
+            }
+            AUDF0 => {
+                debug!("AUDF0: {}", val)
+            }
+            AUDF1 => {
+                debug!("AUDF1: {}", val)
+            }
+            AUDV0 => {
+                debug!("AUDV0: {}", val)
+            }
+            AUDV1 => {
+                debug!("AUDV1: {}", val)
+            }
+            GRP0 => {
+                self.p0.set_graphic(val);
+                self.p1.set_vdel_value();
+            }
+            GRP1 => {
+                self.p1.set_graphic(val);
+                self.p0.set_vdel_value();
+                self.bl.set_vdel_value();
+            }
+            ENAM0 => self.m0.set_enabled((val & 0x02) != 0),
+            ENAM1 => self.m1.set_enabled((val & 0x02) != 0),
+            ENABL => self.bl.set_enabled((val & 0x02) != 0),
+
+            //
+            // Horizontal motion
+            //
+            HMP0 => self.p0.set_hmove_value(val),
+            HMP1 => self.p1.set_hmove_value(val),
+            HMM0 => self.m0.set_hmove_value(val),
+            HMM1 => self.m1.set_hmove_value(val),
+            HMBL => self.bl.set_hmove_value(val),
+            VDELP0 => self.p0.set_vdel((val & 0x01) != 0),
+            VDELP1 => self.p1.set_vdel((val & 0x01) != 0),
+            VDELBL => self.bl.set_vdel((val & 0x01) != 0),
+            RESMP0 => {
+                if (val & 0x02) != 0 {
+                    self.m0.reset_to_player(&self.p0);
+                }
+            }
+            RESMP1 => {
+                if (val & 0x02) != 0 {
+                    self.m1.reset_to_player(&self.p1);
+                }
+            }
+            HMOVE => {
+                self.bl.start_hmove();
+                self.m0.start_hmove();
+                self.m1.start_hmove();
+                self.p0.start_hmove();
+                self.p1.start_hmove();
+
+                self.late_reset_hblank = true;
+            }
+            HMCLR => {
+                self.bl.hmclr();
+                self.m0.hmclr();
+                self.m1.hmclr();
+                self.p0.hmclr();
+                self.p1.hmclr();
+            }
+            CXCLR => {
+                self.cxm0p = 0;
+                self.cxm1p = 0;
+                self.cxp0fb = 0;
+                self.cxp1fb = 0;
+                self.cxm0fb = 0;
+                self.cxm1fb = 0;
+                self.cxblpf = 0;
+                self.cxppmm = 0;
+            }
         }
     }
 }

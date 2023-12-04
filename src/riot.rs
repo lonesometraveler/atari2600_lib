@@ -1,4 +1,4 @@
-use crate::{bus::Bus, memory::PiaAddress};
+use crate::memory::PiaAddress;
 
 #[allow(clippy::upper_case_acronyms)]
 // The RIOT (RAM/IO/Timer) chip. Also known as the PIA. It's a MOS 6532 chip.
@@ -147,12 +147,12 @@ impl RIOT {
     }
 }
 
-impl Bus for RIOT {
-    fn read(&mut self, address: u16) -> u8 {
-        let pia_address = PiaAddress::from_address(address).unwrap();
+impl RIOT {
+    pub fn read(&mut self, address: PiaAddress) -> u8 {
+        // let pia_address = PiaAddress::from_address(address).unwrap();
         use PiaAddress::*;
-        match pia_address {
-            RAM => self.ram[address as usize],
+        match address {
+            RAM(addr) => self.ram[addr],
             SWCHA => {
                 // The bits of SWACNT set the data direction for the corresponding bits of SWCHA, 0
                 // being for input, and 1 for output.
@@ -171,11 +171,10 @@ impl Bus for RIOT {
         }
     }
 
-    fn write(&mut self, address: u16, val: u8) {
-        let pia_address = PiaAddress::from_address(address).unwrap();
+    pub fn write(&mut self, address: PiaAddress, val: u8) {
         use PiaAddress::*;
-        match pia_address {
-            RAM => self.ram[address as usize] = val,
+        match address {
+            RAM(addr) => self.ram[addr] = val,
             SWACNT => self.swacnt = val,
             SWBCNT => self.swbcnt = val,
             TIM1T => self.init_timer(val, 1),
