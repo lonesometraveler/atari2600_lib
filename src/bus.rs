@@ -40,7 +40,7 @@ impl Bus for AtariBus {
                 error!("{}", e);
                 0
             }
-            _ => unreachable!("Invalid address: {:X}", address),
+            _ => unreachable!(),
         }
     }
 
@@ -52,7 +52,7 @@ impl Bus for AtariBus {
             Ok(MemoryMirrors::TiaWrite(address)) => self.tia.borrow_mut().write(address, val),
             Err(e) => error!("{}", e),
             _ => {
-                unreachable!("Invalid address: {:X}", address);
+                unreachable!();
             }
         }
     }
