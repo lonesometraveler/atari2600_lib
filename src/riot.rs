@@ -149,7 +149,6 @@ impl RIOT {
 
 impl RIOT {
     pub fn read(&mut self, address: PiaAddress) -> u8 {
-        // let pia_address = PiaAddress::from_address(address).unwrap();
         use PiaAddress::*;
         match address {
             RAM(addr) => self.ram[addr],
