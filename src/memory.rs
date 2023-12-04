@@ -1,12 +1,13 @@
 use std::error::Error;
 
-// https://problemkaputt.de/2k6specs.htm#memoryandiomap
+#[derive(Debug)]
 pub enum Operation {
     Read,
     Write,
 }
 
 // https://problemkaputt.de/2k6specs.htm#memorymirrors
+#[derive(Debug)]
 pub enum MemoryMirrors {
     Cartridge(usize),
     TiaRead(TiaReadAddress),
@@ -24,34 +25,19 @@ impl MemoryMirrors {
         match address {
             // Cartridge memory is selected by A12=1
             a if a & A12 != 0 => Ok(Self::Cartridge(address as usize & 0xfff)),
+
             // PIA I/O is selected by A12=0, A9=1, A7=1
-            a if a & (A12 | A9 | A7) == A9 | A7 => Ok(Self::PiaIO(
-                PiaAddress::from_address(address & 0x2ff).unwrap(),
-            )),
+            a if a & (A12 | A9 | A7) == A9 | A7 => Ok(Self::PiaIO((address & 0x2ff).try_into()?)),
 
             // PIA RAM is selected by A12=0, A9=0, A7=1
-            a if a & A7 == A7 => Ok(Self::PiaRam(
-                PiaAddress::from_address(address & 0x7f).unwrap(),
-            )),
+            a if a & A7 == A7 => Ok(Self::PiaRam((address & 0x7f).try_into()?)),
+
             // The TIA chip is addressed by A12=0, A7=0
             a if a & A7 == 0 => match op {
-                Operation::Read => Ok(Self::TiaRead(
-                    match TiaReadAddress::from_address((address & 0x0f) | 0x30) {
-                        Some(address) => address,
-                        None => {
-                            return Err(format!("Invalid TIA Read address: {:X}", address).into());
-                        }
-                    },
-                )),
-                Operation::Write => Ok(Self::TiaWrite(
-                    match TiaWriteAddress::from_address(address & 0x3f) {
-                        Some(address) => address,
-                        None => {
-                            return Err(format!("Invalid TIA Write address: {:X}", address).into());
-                        }
-                    },
-                )),
+                Operation::Read => Ok(Self::TiaRead(((address & 0x0f) | 0x30).try_into()?)),
+                Operation::Write => Ok(Self::TiaWrite((address & 0x3f).try_into()?)),
             },
+
             _ => Err(format!("Invalid address: {:X}", address).into()),
         }
     }
@@ -76,26 +62,26 @@ pub enum TiaReadAddress {
     INPT5,  // 3D - 1....... Read input
 }
 
-impl TiaReadAddress {
-    // Method to create enum variant from an address
-    pub fn from_address(address: u16) -> Option<Self> {
+impl TryFrom<u16> for TiaReadAddress {
+    type Error = Box<dyn Error>;
+    fn try_from(address: u16) -> Result<Self, Self::Error> {
         match address {
             // Match each address to the corresponding enum variant
-            0x30 => Some(Self::CXM0P),
-            0x31 => Some(Self::CXM1P),
-            0x32 => Some(Self::CXP0FB),
-            0x33 => Some(Self::CXP1FB),
-            0x34 => Some(Self::CXM0FB),
-            0x35 => Some(Self::CXM1FB),
-            0x36 => Some(Self::CXBLPF),
-            0x37 => Some(Self::CXPPMM),
-            0x38 => Some(Self::INPT0),
-            0x39 => Some(Self::INPT1),
-            0x3A => Some(Self::INPT2),
-            0x3B => Some(Self::INPT3),
-            0x3C => Some(Self::INPT4),
-            0x3D => Some(Self::INPT5),
-            _ => None, // Return None for invalid addresses
+            0x30 => Ok(Self::CXM0P),
+            0x31 => Ok(Self::CXM1P),
+            0x32 => Ok(Self::CXP0FB),
+            0x33 => Ok(Self::CXP1FB),
+            0x34 => Ok(Self::CXM0FB),
+            0x35 => Ok(Self::CXM1FB),
+            0x36 => Ok(Self::CXBLPF),
+            0x37 => Ok(Self::CXPPMM),
+            0x38 => Ok(Self::INPT0),
+            0x39 => Ok(Self::INPT1),
+            0x3A => Ok(Self::INPT2),
+            0x3B => Ok(Self::INPT3),
+            0x3C => Ok(Self::INPT4),
+            0x3D => Ok(Self::INPT5),
+            _ => Err(format!("Invalid TIA Read address: {:X}", address).into()), // Return an error for invalid addresses
         }
     }
 }
@@ -150,55 +136,56 @@ pub enum TiaWriteAddress {
     CXCLR,  // 2C - <strobe> Clear collision latches
 }
 
-impl TiaWriteAddress {
-    pub fn from_address(address: u16) -> Option<Self> {
+impl TryFrom<u16> for TiaWriteAddress {
+    type Error = Box<dyn Error>;
+    fn try_from(address: u16) -> Result<Self, Self::Error> {
         match address {
-            0x00 => Some(Self::VSYNC),
-            0x01 => Some(Self::VBLANK),
-            0x02 => Some(Self::WSYNC),
-            0x03 => Some(Self::RSYNC),
-            0x04 => Some(Self::NUSIZ0),
-            0x05 => Some(Self::NUSIZ1),
-            0x06 => Some(Self::COLUP0),
-            0x07 => Some(Self::COLUP1),
-            0x08 => Some(Self::COLUPF),
-            0x09 => Some(Self::COLUBK),
-            0x0A => Some(Self::CTRLPF),
-            0x0B => Some(Self::REFP0),
-            0x0C => Some(Self::REFP1),
-            0x0D => Some(Self::PF0),
-            0x0E => Some(Self::PF1),
-            0x0F => Some(Self::PF2),
-            0x10 => Some(Self::RESP0),
-            0x11 => Some(Self::RESP1),
-            0x12 => Some(Self::RESM0),
-            0x13 => Some(Self::RESM1),
-            0x14 => Some(Self::RESBL),
-            0x15 => Some(Self::AUDC0),
-            0x16 => Some(Self::AUDC1),
-            0x17 => Some(Self::AUDF0),
-            0x18 => Some(Self::AUDF1),
-            0x19 => Some(Self::AUDV0),
-            0x1A => Some(Self::AUDV1),
-            0x1B => Some(Self::GRP0),
-            0x1C => Some(Self::GRP1),
-            0x1D => Some(Self::ENAM0),
-            0x1E => Some(Self::ENAM1),
-            0x1F => Some(Self::ENABL),
-            0x20 => Some(Self::HMP0),
-            0x21 => Some(Self::HMP1),
-            0x22 => Some(Self::HMM0),
-            0x23 => Some(Self::HMM1),
-            0x24 => Some(Self::HMBL),
-            0x25 => Some(Self::VDELP0),
-            0x26 => Some(Self::VDELP1),
-            0x27 => Some(Self::VDELBL),
-            0x28 => Some(Self::RESMP0),
-            0x29 => Some(Self::RESMP1),
-            0x2A => Some(Self::HMOVE),
-            0x2B => Some(Self::HMCLR),
-            0x2C => Some(Self::CXCLR),
-            _ => None,
+            0x00 => Ok(Self::VSYNC),
+            0x01 => Ok(Self::VBLANK),
+            0x02 => Ok(Self::WSYNC),
+            0x03 => Ok(Self::RSYNC),
+            0x04 => Ok(Self::NUSIZ0),
+            0x05 => Ok(Self::NUSIZ1),
+            0x06 => Ok(Self::COLUP0),
+            0x07 => Ok(Self::COLUP1),
+            0x08 => Ok(Self::COLUPF),
+            0x09 => Ok(Self::COLUBK),
+            0x0A => Ok(Self::CTRLPF),
+            0x0B => Ok(Self::REFP0),
+            0x0C => Ok(Self::REFP1),
+            0x0D => Ok(Self::PF0),
+            0x0E => Ok(Self::PF1),
+            0x0F => Ok(Self::PF2),
+            0x10 => Ok(Self::RESP0),
+            0x11 => Ok(Self::RESP1),
+            0x12 => Ok(Self::RESM0),
+            0x13 => Ok(Self::RESM1),
+            0x14 => Ok(Self::RESBL),
+            0x15 => Ok(Self::AUDC0),
+            0x16 => Ok(Self::AUDC1),
+            0x17 => Ok(Self::AUDF0),
+            0x18 => Ok(Self::AUDF1),
+            0x19 => Ok(Self::AUDV0),
+            0x1A => Ok(Self::AUDV1),
+            0x1B => Ok(Self::GRP0),
+            0x1C => Ok(Self::GRP1),
+            0x1D => Ok(Self::ENAM0),
+            0x1E => Ok(Self::ENAM1),
+            0x1F => Ok(Self::ENABL),
+            0x20 => Ok(Self::HMP0),
+            0x21 => Ok(Self::HMP1),
+            0x22 => Ok(Self::HMM0),
+            0x23 => Ok(Self::HMM1),
+            0x24 => Ok(Self::HMBL),
+            0x25 => Ok(Self::VDELP0),
+            0x26 => Ok(Self::VDELP1),
+            0x27 => Ok(Self::VDELBL),
+            0x28 => Ok(Self::RESMP0),
+            0x29 => Ok(Self::RESMP1),
+            0x2A => Ok(Self::HMOVE),
+            0x2B => Ok(Self::HMCLR),
+            0x2C => Ok(Self::CXCLR),
+            _ => Err(format!("Invalid TIA Write address: {:X}", address).into()), // Return an error for invalid addresses
         }
     }
 }
@@ -219,22 +206,22 @@ pub enum PiaAddress {
     T1024T,     // 0297 - Set 1024 clock interval (858.2 usec/interval) (read or write)
 }
 
-impl PiaAddress {
-    // Method to create enum variant from an address
-    pub fn from_address(address: u16) -> Option<Self> {
+impl TryFrom<u16> for PiaAddress {
+    type Error = Box<dyn Error>;
+    fn try_from(address: u16) -> Result<Self, Self::Error> {
         match address {
-            0x0000..=0x007F => Some(Self::RAM(address as usize)),
-            0x0280 => Some(Self::SWCHA), // Initialize with a dummy value
-            0x0281 => Some(Self::SWACNT),
-            0x0282 => Some(Self::SWCHB),
-            0x0283 => Some(Self::SWBCNT),
-            0x0284 => Some(Self::INTIM),
-            0x0285 => Some(Self::INSTAT),
-            0x0294 => Some(Self::TIM1T),
-            0x0295 => Some(Self::TIM8T),
-            0x0296 => Some(Self::TIM64T),
-            0x0297 => Some(Self::T1024T),
-            _ => None, // Return None for invalid addresses
+            0x0000..=0x007F => Ok(Self::RAM(address as usize)),
+            0x0280 => Ok(Self::SWCHA), // Initialize with a dummy value
+            0x0281 => Ok(Self::SWACNT),
+            0x0282 => Ok(Self::SWCHB),
+            0x0283 => Ok(Self::SWBCNT),
+            0x0284 => Ok(Self::INTIM),
+            0x0285 => Ok(Self::INSTAT),
+            0x0294 => Ok(Self::TIM1T),
+            0x0295 => Ok(Self::TIM8T),
+            0x0296 => Ok(Self::TIM64T),
+            0x0297 => Ok(Self::T1024T),
+            _ => Err(format!("Invalid PIA address: {:X}", address).into()), // Return an error for invalid addresses
         }
     }
 }
