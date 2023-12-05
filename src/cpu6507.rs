@@ -504,39 +504,31 @@ impl CPU6507 {
         let n = val << 1;
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
 
         self.update_sz(n);
     }
 
-    fn bcc(&mut self, addr: u16) {
-        if !self.flags.c() {
+    fn branch_if(&mut self, condition: bool, addr: u16) {
+        if condition {
             let pc = self.pc;
             self.add_branch_cycles(pc, addr);
             self.pc = addr;
         }
+    }
+
+    fn bcc(&mut self, addr: u16) {
+        self.branch_if(!self.flags.c(), addr);
     }
 
     fn bcs(&mut self, addr: u16) {
-        if self.flags.c() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(self.flags.c(), addr);
     }
 
     fn beq(&mut self, addr: u16) {
-        if self.flags.z() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(self.flags.z(), addr);
     }
 
     fn bit(&mut self, addr: u16) {
@@ -548,27 +540,15 @@ impl CPU6507 {
     }
 
     fn bmi(&mut self, addr: u16) {
-        if self.flags.s() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(self.flags.s(), addr);
     }
 
     fn bne(&mut self, addr: u16) {
-        if !self.flags.z() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(!self.flags.z(), addr);
     }
 
     fn bpl(&mut self, addr: u16) {
-        if !self.flags.s() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(!self.flags.s(), addr);
     }
 
     fn brk(&mut self) {
@@ -589,19 +569,11 @@ impl CPU6507 {
     }
 
     fn bvc(&mut self, addr: u16) {
-        if !self.flags.v() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(!self.flags.v(), addr);
     }
 
     fn bvs(&mut self, addr: u16) {
-        if self.flags.v() {
-            let pc = self.pc;
-            self.add_branch_cycles(pc, addr);
-            self.pc = addr;
-        }
+        self.branch_if(self.flags.v(), addr);
     }
 
     fn clc(&mut self) {
@@ -718,12 +690,8 @@ impl CPU6507 {
         self.update_sz(n);
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
     }
 
@@ -986,12 +954,8 @@ impl CPU6507 {
         let n = val << 1;
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
 
         self.update_sz(n);
@@ -1012,12 +976,8 @@ impl CPU6507 {
         self.update_sz(n);
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
 
         // Copied from and
@@ -1035,12 +995,8 @@ impl CPU6507 {
         self.update_sz(n);
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
 
         // Copied from eor
@@ -1059,12 +1015,8 @@ impl CPU6507 {
         self.update_sz(n);
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
 
         // Copied from adc
