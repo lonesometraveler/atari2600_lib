@@ -16,3 +16,7 @@ sdl2 = { version = "0.33", optional = true }
 [[example]]
 name = "sdl"
 required-features = ["sdl2"]
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true

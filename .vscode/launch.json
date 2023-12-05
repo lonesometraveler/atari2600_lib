@@ -1,0 +1,66 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'atari2600_lib'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=atari2600_lib"
+                ],
+                "filter": {
+                    "name": "atari2600_lib",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'sdl'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--profile=release-with-debug",
+                    "--example=sdl",
+                    "--package=atari2600_lib",
+                    "--features=sdl2"
+                ],
+                "filter": {
+                    "name": "sdl",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'sdl'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=sdl",
+                    "--package=atari2600_lib"
+                ],
+                "filter": {
+                    "name": "sdl",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
