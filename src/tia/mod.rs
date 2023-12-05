@@ -223,57 +223,38 @@ impl TIA {
     }
 
     fn update_collisions(&mut self) {
-        if self.m0.get_color().is_some() && self.p0.get_color().is_some() {
-            self.cxm0p |= 0x40
-        }
-        if self.m0.get_color().is_some() && self.p1.get_color().is_some() {
-            self.cxm0p |= 0x80
+        const BIT_6: u8 = 0x40;
+        const BIT_7: u8 = 0x80;
+
+        macro_rules! check_collision {
+            ($register: ident, $a: expr, $b: expr, $c: expr) => {
+                if $a.get_color().is_some() && $b.get_color().is_some() {
+                    self.$register |= BIT_6;
+                }
+                if $a.get_color().is_some() && $c.get_color().is_some() {
+                    self.$register |= BIT_7;
+                }
+            };
         }
 
-        if self.m1.get_color().is_some() && self.p0.get_color().is_some() {
-            self.cxm1p |= 0x40
-        }
-        if self.m1.get_color().is_some() && self.p1.get_color().is_some() {
-            self.cxm1p |= 0x80
-        }
+        check_collision!(cxm0p, self.m0, self.p0, self.p1);
+        check_collision!(cxm1p, self.m1, self.p1, self.p0);
+        check_collision!(cxp0fb, self.p0, self.bl, self.pf);
+        check_collision!(cxp1fb, self.p1, self.bl, self.pf);
+        check_collision!(cxm0fb, self.m0, self.bl, self.pf);
+        check_collision!(cxm1fb, self.m1, self.bl, self.pf);
 
-        if self.p0.get_color().is_some() && self.bl.get_color().is_some() {
-            self.cxp0fb |= 0x40
-        }
-        if self.p0.get_color().is_some() && self.pf.get_color().is_some() {
-            self.cxp0fb |= 0x80
-        }
-
-        if self.p1.get_color().is_some() && self.bl.get_color().is_some() {
-            self.cxp1fb |= 0x40
-        }
-        if self.p1.get_color().is_some() && self.pf.get_color().is_some() {
-            self.cxp1fb |= 0x80
-        }
-
-        if self.m0.get_color().is_some() && self.bl.get_color().is_some() {
-            self.cxm0fb |= 0x40
-        }
-        if self.m0.get_color().is_some() && self.pf.get_color().is_some() {
-            self.cxm0fb |= 0x80
-        }
-
-        if self.m1.get_color().is_some() && self.bl.get_color().is_some() {
-            self.cxm0fb |= 0x40
-        }
-        if self.m1.get_color().is_some() && self.pf.get_color().is_some() {
-            self.cxm0fb |= 0x80
-        }
-
+        // bit 6 of CXLBPF is unused
         if self.bl.get_color().is_some() && self.pf.get_color().is_some() {
-            self.cxblpf |= 0x80
+            self.cxblpf |= BIT_7
         }
 
         if self.m0.get_color().is_some() && self.m1.get_color().is_some() {
-            self.cxppmm |= 0x40
+            self.cxppmm |= BIT_6
         }
+
         if self.p0.get_color().is_some() && self.p1.get_color().is_some() {
-            self.cxppmm |= 0x80
+            self.cxppmm |= BIT_7
         }
     }
 
