@@ -4,6 +4,8 @@ use log::{debug, info};
 use std::{env, process};
 
 const STACK_INIT: u8 = 0xff;
+const LOW_NIBBLE_MASK: u16 = 0x0F;
+const HIGH_NIBBLE_MASK: u16 = 0xF0;
 
 lazy_static::lazy_static! {
     static ref CPU6507_DEBUG: bool = match env::var("CPU6507_DEBUG") {
@@ -119,6 +121,22 @@ impl CPU6507 {
             .collect::<Vec<_>>()
     }
 
+    fn calculate_absolute_address(&mut self, pc: u16) -> u16 {
+        let lo = self.read(pc + 1) as u16;
+        let hi = self.read(pc + 2) as u16;
+        (hi << 8) | lo
+    }
+
+    fn calculate_indirect_address(&mut self, addr: u16) -> u16 {
+        let lo = self.read(addr) as u16;
+        let hi = if addr & 0xff == 0xff {
+            self.read(addr & 0xff00) as u16
+        } else {
+            self.read(addr + 1) as u16
+        };
+        (hi << 8) | lo
+    }
+
     fn get_data(&mut self, addr_mode: &AddressingMode) -> (u16, bool) {
         let pc = self.pc;
         let next_pc = self.pc + addr_mode.n_bytes() as u16;
@@ -129,9 +147,7 @@ impl CPU6507 {
                 (addr, false)
             }
             AddressingMode::Absolute => {
-                let lo = self.read(pc + 1) as u16;
-                let hi = self.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_absolute_address(pc);
                 (addr, false)
             }
             AddressingMode::Implied => (0, false),
@@ -151,33 +167,18 @@ impl CPU6507 {
                 (((next_pc as i16) + (offset as i8 as i16)) as u16, false)
             }
             AddressingMode::AbsoluteX => {
-                let lo = self.read(pc + 1) as u16;
-                let hi = self.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_absolute_address(pc);
                 let n_addr = addr.wrapping_add(self.x as u16);
                 (n_addr, pages_differ(addr, n_addr))
             }
             AddressingMode::AbsoluteY => {
-                let lo = self.read(pc + 1) as u16;
-                let hi = self.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_absolute_address(pc);
                 let n_addr = addr.wrapping_add(self.y as u16);
                 (n_addr, pages_differ(addr, n_addr))
             }
             AddressingMode::Indirect => {
-                let lo = self.read(pc + 1) as u16;
-                let hi = self.read(pc + 2) as u16;
-                let addr = (hi << 8) | lo;
-
-                let lo = self.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    self.read(addr & 0xff00) as u16
-                } else {
-                    self.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_absolute_address(pc);
+                let addr = self.calculate_indirect_address(addr);
 
                 (addr, false)
             }
@@ -192,35 +193,15 @@ impl CPU6507 {
             AddressingMode::IndexedIndirect => {
                 let lo = self.read(pc + 1);
                 let addr = lo.wrapping_add(self.x) as u16;
-
-                let lo = self.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    self.read(addr & 0xff00) as u16
-                } else {
-                    self.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_indirect_address(addr);
                 (addr, false)
             }
             AddressingMode::IndirectIndexed => {
                 let addr = self.read(pc + 1) as u16;
-
-                let lo = self.read(addr) as u16;
-
-                let hi = if addr & 0xff == 0xff {
-                    self.read(addr & 0xff00) as u16
-                } else {
-                    self.read(addr + 1) as u16
-                };
-
-                let addr = (hi << 8) | lo;
+                let addr = self.calculate_indirect_address(addr);
                 let n_addr = addr.wrapping_add(self.y as u16);
-
                 (n_addr, pages_differ(addr, n_addr))
             }
-
             _ => panic!("Bad addressing mode {:?}", addr_mode),
         }
     }
@@ -455,29 +436,7 @@ impl CPU6507 {
         let val = self.read(addr);
 
         if self.flags.d() {
-            let mut lo = (self.a as u16 & 0x0f) + (val as u16 & 0x0f) + (self.flags.c() as u16);
-            let mut hi = (self.a as u16 & 0xf0) + (val as u16 & 0xf0);
-
-            // In BCD, values 0x0A to 0x0F are invalid, so we add 1 to the high nybble for the
-            // carry, and the low nybble has to skip 6 values for A-F.
-            if lo > 0x09 {
-                hi += 0x10;
-                lo += 0x06;
-            }
-
-            self.flags.set_s((hi & 0x80) != 0);
-            self.flags.set_z(((lo + hi) & 0xff) != 0);
-            self.flags
-                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ hi as u8) & 0x80 != 0));
-
-            // 0xA0 to 0xF0 are invalid for the high nybble, so we need to skip 6 values of the
-            // high nybble.
-            if hi > 0x90 {
-                hi += 0x60;
-            }
-
-            self.flags.set_c((hi & 0xff00) != 0);
-            self.a = (lo & 0x0f) as u8 | (hi & 0xf0) as u8;
+            self.adc_bcd(val);
         } else {
             let n = (self.a as u16) + (val as u16) + (self.flags.c() as u16);
             let a = (n & 0x00ff) as u8;
@@ -495,6 +454,37 @@ impl CPU6507 {
 
             self.a = a;
         }
+    }
+
+    fn adc_bcd(&mut self, val: u8) {
+        const BCD_CARRY: u16 = 0x10;
+        const BCD_SKIP_VALUES: u16 = 0x60;
+
+        let mut lo = (self.a as u16 & LOW_NIBBLE_MASK)
+            + (val as u16 & LOW_NIBBLE_MASK)
+            + (self.flags.c() as u16);
+        let mut hi = (self.a as u16 & HIGH_NIBBLE_MASK) + (val as u16 & HIGH_NIBBLE_MASK);
+
+        // In BCD, values 0x0A to 0x0F are invalid, so we add 1 to the high nibble for the
+        // carry, and the low nibble has to skip 6 values for A-F.
+        if lo > 0x09 {
+            hi += BCD_CARRY;
+            lo += BCD_SKIP_VALUES;
+        }
+
+        self.flags.set_s((hi & 0x80) != 0);
+        self.flags.set_z(((lo + hi) & 0xFF) != 0);
+        self.flags
+            .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ hi as u8) & 0x80 != 0));
+
+        // 0xA0 to 0xF0 are invalid for the high nibble, so we need to skip 6 values of the
+        // high nibble.
+        if hi > 0x90 {
+            hi += BCD_SKIP_VALUES;
+        }
+
+        self.flags.set_c((hi & 0xFF00) != 0);
+        self.a = ((lo & LOW_NIBBLE_MASK) | (hi & HIGH_NIBBLE_MASK)) as u8;
     }
 
     fn and(&mut self, addr: u16) {
@@ -659,15 +649,13 @@ impl CPU6507 {
     }
 
     fn dex(&mut self) {
-        let n = self.x.wrapping_sub(1);
-        self.x = n;
-        self.update_sz(n);
+        self.x = self.x.wrapping_sub(1);
+        self.update_sz(self.x);
     }
 
     fn dey(&mut self) {
-        let n = self.y.wrapping_sub(1);
-        self.y = n;
-        self.update_sz(n);
+        self.y = self.y.wrapping_sub(1);
+        self.update_sz(self.y);
     }
 
     fn eor(&mut self, addr: u16) {
@@ -685,15 +673,13 @@ impl CPU6507 {
     }
 
     fn inx(&mut self) {
-        let n = self.x.wrapping_add(1);
-        self.x = n;
-        self.update_sz(n);
+        self.x = self.x.wrapping_add(1);
+        self.update_sz(self.x);
     }
 
     fn iny(&mut self) {
-        let n = self.y.wrapping_add(1);
-        self.y = n;
-        self.update_sz(n);
+        self.y = self.y.wrapping_add(1);
+        self.update_sz(self.y);
     }
 
     fn jmp(&mut self, addr: u16) {
@@ -707,21 +693,18 @@ impl CPU6507 {
     }
 
     fn lda(&mut self, addr: u16) {
-        let val = self.read(addr);
-        self.a = val;
-        self.update_sz(val);
+        self.a = self.read(addr);
+        self.update_sz(self.a);
     }
 
     fn ldx(&mut self, addr: u16) {
-        let val = self.read(addr);
-        self.x = val;
-        self.update_sz(val);
+        self.x = self.read(addr);
+        self.update_sz(self.x);
     }
 
     fn ldy(&mut self, addr: u16) {
-        let val = self.read(addr);
-        self.y = val;
-        self.update_sz(val);
+        self.y = self.read(addr);
+        self.update_sz(self.y);
     }
 
     fn lsr(&mut self, addr: u16, addr_mode: AddressingMode) {
@@ -778,44 +761,37 @@ impl CPU6507 {
         self.set_flags(p);
     }
 
-    fn rol(&mut self, addr: u16, addr_mode: AddressingMode) {
+    fn rotate(&mut self, addr: u16, addr_mode: AddressingMode, shift_left: bool) {
+        const BIT_7_MASK: u8 = 0x80;
+        const BIT_1_MASK: u8 = 0x01;
+
         let val = match addr_mode {
             AddressingMode::Accumulator => self.a,
             _ => self.read(addr),
         };
 
-        let n = (val << 1) | (self.flags.c() as u8);
-        self.flags.set_c(val & 0x80 != 0);
+        let n = if shift_left {
+            (val << 1) | self.flags.c() as u8
+        } else {
+            (val >> 1) | (self.flags.c() as u8) << 7
+        };
+
+        self.flags
+            .set_c((val & (if shift_left { BIT_7_MASK } else { BIT_1_MASK })) != 0);
         self.update_sz(n);
 
         match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
+            AddressingMode::Accumulator => self.a = n,
+            _ => self.write(addr, n),
         };
     }
 
+    fn rol(&mut self, addr: u16, addr_mode: AddressingMode) {
+        self.rotate(addr, addr_mode, true);
+    }
+
     fn ror(&mut self, addr: u16, addr_mode: AddressingMode) {
-        let val = match addr_mode {
-            AddressingMode::Accumulator => self.a,
-            _ => self.read(addr),
-        };
-
-        let n = (val >> 1) | ((self.flags.c() as u8) << 7);
-        self.flags.set_c(val & 0x01 == 1);
-        self.update_sz(n);
-
-        match addr_mode {
-            AddressingMode::Accumulator => {
-                self.a = n;
-            }
-            _ => {
-                self.write(addr, n);
-            }
-        };
+        self.rotate(addr, addr_mode, false);
     }
 
     fn rti(&mut self) {
@@ -836,31 +812,7 @@ impl CPU6507 {
 
         if self.flags.d() {
             // http://www.6502.org/tutorials/decimal_mode.html
-            let mut temp = (self.a as i16) - (val as i16) - (!self.flags.c() as i16);
-            let lo = ((self.a as i16) & 0x0f) - ((val as i16) & 0x0f) - (!self.flags.c() as i16);
-
-            if temp < 0 {
-                temp -= 0x60;
-            }
-
-            if lo < 0 {
-                temp -= 0x06;
-            }
-
-            debug!(
-                "SBC  {:02X} - {:02X} - {:02X} = {:04X}",
-                self.a,
-                val,
-                !self.flags.c() as u8,
-                temp
-            );
-
-            let a = (temp & 0xff) as u8;
-            self.update_sz(a);
-            self.flags
-                .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0));
-            self.flags.set_c(temp >= 0);
-            self.a = a;
+            self.sbc_decimal(val);
         } else {
             let val = !val;
             let n = (self.a as u16) + (val as u16) + (self.flags.c() as u16);
@@ -879,6 +831,36 @@ impl CPU6507 {
 
             self.a = a;
         }
+    }
+
+    fn sbc_decimal(&mut self, val: u8) {
+        const DECIMAL_CARRY: i16 = 0x60;
+        const DECIMAL_SUBTRACT: i16 = 0x06;
+
+        let borrow = !self.flags.c() as i16;
+        let temp = (self.a as i16) - (val as i16) - borrow;
+        let lo = ((self.a as i16) & LOW_NIBBLE_MASK as i16)
+            - ((val as i16) & LOW_NIBBLE_MASK as i16)
+            - borrow;
+
+        let temp = if temp < 0 { temp - DECIMAL_CARRY } else { temp };
+        let temp = if lo < 0 {
+            temp - DECIMAL_SUBTRACT
+        } else {
+            temp
+        };
+
+        debug!(
+            "SBC  {:02X} - {:02X} - {:02X} = {:04X}",
+            self.a, val, borrow as u8, temp
+        );
+
+        let a = (temp & 0xFF) as u8;
+        self.update_sz(a);
+        self.flags
+            .set_v(((self.a ^ val) & 0x80 == 0) && ((self.a ^ a) & 0x80 != 0));
+        self.flags.set_c(temp >= 0);
+        self.a = a;
     }
 
     fn sec(&mut self) {
