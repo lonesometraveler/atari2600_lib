@@ -107,16 +107,14 @@ impl Graphic for Player {
 
     fn pixel_bit(&self) -> bool {
         self.scan_counter.bit_idx.map_or(false, |x| {
-            let graphic = if self.vdel {
-                self.old_value
-            } else {
-                self.graphic
-            };
-
-            if self.horizontal_mirror {
-                ((graphic >> x) & 1) != 0
-            } else {
-                ((graphic >> (7 - x)) & 1) != 0
+            (0..8).contains(&x) && {
+                let graphic = if self.vdel {
+                    self.old_value
+                } else {
+                    self.graphic
+                };
+                let bit_index = if self.horizontal_mirror { x } else { 7 - x };
+                (graphic >> bit_index) & 1 != 0
             }
         })
     }
