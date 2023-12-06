@@ -28,6 +28,11 @@ use pf_data::PlayfieldData;
 
 const PF_LENGTH: usize = 20;
 
+enum PlayfieldSide {
+    Left,
+    Right,
+}
+
 pub(crate) struct Playfield {
     colors: SharedColor,
     ctr: Counter,
@@ -85,28 +90,27 @@ impl Playfield {
         let data_bits = self.pf_data.bits();
         let colors = self.colors.borrow();
 
-        if ctr < 20 {
-            self.graphic_bit_value = match (data_bits[pf_x], self.score_mode) {
-                (true, true) => Some(colors.colup0()),
-                (true, false) => Some(colors.colupf()),
-                (false, _) => None,
-            };
+        // The playfield makes up the left-most side of the screen.
+        let side = if ctr < 20 {
+            PlayfieldSide::Left
         } else {
-            // The playfield also makes up the right-most side of the
-            // screen, optionally mirrored horizontally as denoted by the
-            // CTRLPF register.
-            let idx = if self.horizontal_mirror {
-                PF_LENGTH - 1 - pf_x
-            } else {
-                pf_x
-            };
+            PlayfieldSide::Right
+        };
 
-            self.graphic_bit_value = match (data_bits[idx], self.score_mode) {
-                (true, true) => Some(colors.colup1()),
-                (true, false) => Some(colors.colupf()),
-                (false, _) => None,
-            };
-        }
+        // The playfield also makes up the right-most side of the
+        // screen, optionally mirrored horizontally as denoted by the
+        // CTRLPF register.
+        let idx = match (&side, self.horizontal_mirror) {
+            (PlayfieldSide::Right, true) => PF_LENGTH - 1 - pf_x,
+            _ => pf_x,
+        };
+
+        self.graphic_bit_value = match (&side, data_bits[idx], self.score_mode) {
+            (PlayfieldSide::Left, true, true) => Some(colors.colup0()),
+            (PlayfieldSide::Right, true, true) => Some(colors.colup1()),
+            (_, true, _) => Some(colors.colupf()),
+            _ => None,
+        };
     }
 
     pub fn clock(&mut self) {
