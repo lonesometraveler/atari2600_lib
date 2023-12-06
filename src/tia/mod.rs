@@ -23,6 +23,7 @@ use {
 };
 
 const LINE_LENGTH: usize = 160;
+const H_BLANK_CLOCKS: usize = 68;
 
 pub type SharedColor = Rc<RefCell<Colors>>;
 
@@ -35,6 +36,8 @@ pub enum PlayerType {
 struct Signals;
 // https://github.com/jigo2600/jigo2600/blob/master/doc/TIA_Visual_Objects.md
 impl Signals {
+    // The SHB signal is used to set HB and clear HC.
+    const SHB: u8 = 0;
     // Set H-SYNC. The SHS signal is used to set the horizontal sync  HS signal and, together with RHS, it shapes it.
     const SHS: u8 = 4;
     // Reset H-SYNC. The RHS signal resets the horizontal sync HS signal and triggers the color burst CB signal.
@@ -47,8 +50,38 @@ impl Signals {
     const LRHB: u8 = 18;
     // Center. The playfield center signal CNT is starts to draw the second part of the playfield.
     const CNT: u8 = 36;
-    // RESET, H-BLANK. The SHB signal is used to set HB and clear HC.
-    const SHB: u8 = 56;
+    // The END signal resets the HC counter.
+    const END: u8 = 56;
+}
+
+#[allow(clippy::upper_case_acronyms)]
+#[repr(u8)]
+enum VideoSignal {
+    SHB = Signals::SHB,
+    SHS = Signals::SHS,
+    RHS = Signals::RHS,
+    RCB = Signals::RCB,
+    RHB = Signals::RHB,
+    LRHB = Signals::LRHB,
+    CNT = Signals::CNT,
+    END = Signals::END,
+}
+
+impl TryFrom<u8> for VideoSignal {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            Signals::SHS => Ok(Self::SHS),
+            Signals::RHS => Ok(Self::RHS),
+            Signals::RCB => Ok(Self::RCB),
+            Signals::RHB => Ok(Self::RHB),
+            Signals::LRHB => Ok(Self::LRHB),
+            Signals::CNT => Ok(Self::CNT),
+            Signals::SHB => Ok(Self::SHB),
+            Signals::END => Ok(Self::END),
+            _ => Err(()),
+        }
+    }
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -259,7 +292,7 @@ impl TIA {
     }
 
     fn visible_cycle(&self) -> bool {
-        self.ctr.value() > Signals::RHB && self.ctr.value() <= Signals::SHB
+        self.ctr.value() > Signals::RHB && self.ctr.value() <= Signals::END
     }
 
     fn in_late_reset(&self) -> bool {
@@ -273,42 +306,71 @@ impl TIA {
         let clocked = self.ctr.clock();
 
         if self.visible_cycle() {
-            // Playfield is clocked on every visible cycle
-            self.pf.clock();
-
-            // Update the collision registers
-            self.update_collisions();
-
-            let color = if self.in_late_reset() {
-                // During LRHB we apply extra HMOVE clocks
-                self.apply_hmove_all();
-                DEFAULT_COLOR
-            } else {
-                // Player, missile, and ball counters only get clocked on visible cycles
-                self.clock_visible_components();
-                self.get_pixel_color() as usize
-            };
-
-            let x = self.ctr.internal_value as usize - 68;
-            self.pixels[x] = NTSC_PALETTE[color];
+            self.set_pixel();
         } else {
             // During HBLANK we apply extra HMOVE clocks
             self.apply_hmove_all();
         }
 
         if clocked {
-            match self.ctr.value() {
-                // If we've reset the counter back to 0, we've finished the scanline and started
-                // a new scanline, in HBlank.
-                0 => {
-                    // Simply writing to the WSYNC causes the microprocessor to halt until the
-                    // electron beam reaches the right edge of the screen.
-                    self.wsync = false;
-                    self.late_reset_hblank = false;
-                }
-                Signals::RHB => { /* Reset HBlank */ }
-                Signals::LRHB => { /* Late Reset HBlank */ }
-                _ => {}
+            if let Ok(signal) = self.ctr.value().try_into() {
+                self.handle_video_signal(signal);
+            }
+        }
+    }
+
+    fn set_pixel(&mut self) {
+        // Playfield is clocked on every visible cycle
+        self.pf.clock();
+
+        // Update the collision registers
+        self.update_collisions();
+
+        let color = if self.in_late_reset() {
+            // During LRHB we apply extra HMOVE clocks
+            self.apply_hmove_all();
+            DEFAULT_COLOR
+        } else {
+            // Player, missile, and ball counters only get clocked on visible cycles
+            self.clock_visible_components();
+            self.get_pixel_color() as usize
+        };
+
+        let x = self.ctr.internal_value as usize - H_BLANK_CLOCKS;
+        self.pixels[x] = NTSC_PALETTE[color];
+    }
+
+    fn handle_video_signal(&mut self, signal: VideoSignal) {
+        match signal {
+            // If we've reset the counter back to 0, we've finished the scanline and started
+            // a new scanline, in HBlank.
+            VideoSignal::SHB => {
+                // The SHB signal is used to set HB and clear HC.
+                // Simply writing to the WSYNC causes the microprocessor to halt until the
+                // electron beam reaches the right edge of the screen.
+                self.wsync = false;
+                self.late_reset_hblank = false;
+            }
+            VideoSignal::SHS => {
+                // The SHS signal is used to set the horizontal sync HS signal and, together with RHS, it shapes it.
+            }
+            VideoSignal::RHS => {
+                // The RHS signal resets the horizontal sync HS signal and triggers the color burst CB signal.
+            }
+            VideoSignal::RCB => {
+                // The RCB signal resets the color burst CB.
+            }
+            VideoSignal::RHB => {
+                // The RHB signal resets the HBLANK HB signal. It can be ignored for LRHB depending on the HMOVEL latch.
+            }
+            VideoSignal::LRHB => {
+                // The LRHB signal resets the HBLANK HB signal later. It can be ignored for RHB depending on the HMOVEL latch.
+            }
+            VideoSignal::CNT => {
+                // The playfield center signal CNT is starts to draw the second part of the playfield.
+            }
+            VideoSignal::END => {
+                // The END signal resets the HC counter.
             }
         }
     }
@@ -415,7 +477,8 @@ impl TIA {
             //
             // "RSYNC resets the two-phase clock for the HSync counter to the H@1
             // rising edge when strobed."
-            RSYNC => self.ctr.reset_to_h1(),
+            // RSYNC => self.ctr.reset_to_h1(),
+            RSYNC => (),
 
             //
             // Colors
