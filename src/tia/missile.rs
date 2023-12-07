@@ -53,19 +53,6 @@ impl Missile {
     pub fn reset_to_player(&mut self, player: &Player) {
         self.ctr.reset_to(player.counter().internal_value);
     }
-
-    pub fn debug(&self) {
-        if !self.should_draw_graphic() && !self.should_draw_copy() {
-            return;
-        }
-
-        println!(
-            "ctr: {}, nusiz: {:03b}, gv: {:?}",
-            self.ctr.value(),
-            self.nusiz,
-            self.scan_counter.bit_value,
-        );
-    }
 }
 
 impl Graphic for Missile {

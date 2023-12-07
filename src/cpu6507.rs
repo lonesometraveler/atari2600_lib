@@ -114,13 +114,6 @@ impl CPU6507 {
         self.cycles = 0;
     }
 
-    fn get_bytes(&mut self, addr_mode: &AddressingMode) -> Vec<u8> {
-        let n_bytes = addr_mode.n_bytes() as u16;
-        (0..n_bytes)
-            .map(|n| self.read(self.pc + n))
-            .collect::<Vec<_>>()
-    }
-
     fn calculate_absolute_address(&mut self, pc: u16) -> u16 {
         let lo = self.read(pc + 1) as u16;
         let hi = self.read(pc + 2) as u16;
@@ -228,30 +221,6 @@ impl CPU6507 {
         self.flags.set_s((val >> 7 & 0x01) == 1);
     }
 
-    fn debug(&mut self, op: &Opcode) {
-        let Opcode(ref inst, ref addr_mode, _, _) = *op;
-
-        let raw_bytes = self.get_bytes(addr_mode);
-
-        let bytes = raw_bytes
-            .iter()
-            .map(|arg| format!("{:02X}", arg))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        println!(
-            "{:04X}  {:8}  {:32?} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-            self.pc,
-            bytes,
-            inst,
-            self.a,
-            self.x,
-            self.y,
-            self.flags(),
-            self.sp
-        );
-    }
-
     fn stack_push8(&mut self, val: u8) {
         // The stack page exists from 0x0080 to 0x00FF
         let addr = self.sp as u16;
@@ -308,11 +277,6 @@ impl CPU6507 {
         // Get opcode information from the lookup table
         let op = &OPCODES[opcode as usize];
 
-        // Debug print if CPU6507_DEBUG is true
-        if *CPU6507_DEBUG {
-            self.debug(op);
-        }
-
         // Destructure Opcode for better readability
         let Opcode(inst, addr_mode, cycles, extra_cycles) = op;
 
@@ -322,7 +286,7 @@ impl CPU6507 {
         // Update program counter
         self.pc += addr_mode.n_bytes() as u16;
 
-        // Update CPU state for debugging purposes
+        // Update CPU state
         self.current_instruction = Some(*inst);
         self.current_addr = addr;
         self.current_addr_mode = *addr_mode;
@@ -408,13 +372,6 @@ impl CPU6507 {
 
             self.current_instruction = None;
         }
-    }
-
-    pub fn step(&mut self) -> u64 {
-        let start_cycles = self.cycles;
-        self.cycles += self.fetch_and_decode();
-        self.execute();
-        self.cycles - start_cycles
     }
 
     pub fn clock(&mut self) {
