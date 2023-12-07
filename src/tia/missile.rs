@@ -56,7 +56,7 @@ impl Missile {
 }
 
 impl Graphic for Missile {
-    const INIT_DELAY: isize = 4;
+    const INIT_DELAY: isize = 6;
     const GRAPHIC_SIZE: isize = 1;
 
     fn size(&self) -> usize {
