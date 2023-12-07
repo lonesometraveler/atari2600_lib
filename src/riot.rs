@@ -114,11 +114,11 @@ impl RIOT {
     }
 
     pub fn clock(&mut self) {
-        self.cycle_count -= 1;
-
         if self.cycle_count == 0 {
             self.decrement();
         }
+
+        self.cycle_count -= 1;
     }
 
     // Initialises the timer at a certain resolution. The resolution determines how many clocks of
