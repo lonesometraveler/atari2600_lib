@@ -71,24 +71,6 @@ impl Player {
     pub fn hmclr(&mut self) {
         self.hmove_offset = 0
     }
-
-    #[allow(dead_code)]
-    pub fn debug(&self) {
-        if !self.should_draw_graphic() && !self.should_draw_copy() {
-            return;
-        }
-
-        println!("p: {:?}, ctr: {}, grp: {:08b}, gv: {:?}, refp: {}, nusiz: {:03b}, vdel: {}, old_value: {:08b}",
-                 self.player,
-                 self.ctr.value(),
-                 self.graphic,
-                 self.scan_counter.bit_value,
-                 self.horizontal_mirror,
-                 self.nusiz,
-                 self.vdel,
-                 self.old_value,
-        );
-    }
 }
 
 impl Graphic for Player {

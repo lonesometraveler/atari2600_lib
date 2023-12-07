@@ -1,6 +1,5 @@
 mod bus;
 mod cpu6507;
-mod debugger;
 #[allow(clippy::upper_case_acronyms)]
 pub(crate) mod memory;
 mod opcode;
@@ -85,7 +84,6 @@ impl EmulatorCore {
         for c in 0..CLOCKS_PER_SCANLINE {
             self.handle_riot_clock(c);
             self.tia.borrow_mut().clock();
-            // self.debugger.borrow_mut().debug();
             self.handle_cpu_clock(c);
         }
     }
@@ -137,14 +135,6 @@ impl KeyEvent for EmulatorCore {
     fn color(&mut self) {
         self.riot.borrow_mut().color();
     }
-
-    // fn toggle(&mut self) {
-    //     self.debugger.borrow_mut().toggle();
-    // }
-
-    // fn step_frame(&mut self) {
-    //     self.debugger.borrow_mut().step_frame();
-    // }
 }
 
 fn initialize_components<P: AsRef<str>>(

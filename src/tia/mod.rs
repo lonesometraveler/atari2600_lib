@@ -393,13 +393,6 @@ impl TIA {
         self.bl.clock();
     }
 
-    pub fn debug(&self) {
-        //self.p0.debug();
-        //self.p1.debug();
-        //self.m0.debug();
-        self.m1.debug();
-    }
-
     // TODO: https://github.com/stella-emu/stella/blob/8fe2adf28affc0477ee91689edef3b90168cd3ce/src/emucore/tia/TIA.cxx#L1519
     // fn apply_rsync(&mut self) {
     //     const H_BLANK_CLOCKS: u8 = 68;
