@@ -14,8 +14,8 @@ use std::time::{Duration, Instant};
 
 const ATARI_FPS: f64 = 60.0;
 const FRAME_DURATION: Duration = Duration::from_millis(((1.0 / ATARI_FPS) * 1000.0) as u64);
-const HORIZONTAL_SCALING_FACTOR: usize = 5;
-const VERTICAL_SCALING_FACTOR: usize = 3;
+const HORIZONTAL_SCALING_FACTOR: usize = 4;
+const VERTICAL_SCALING_FACTOR: usize = 2;
 
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
