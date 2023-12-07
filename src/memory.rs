@@ -93,8 +93,8 @@ pub enum TiaWriteAddress {
     VBLANK, // 01 - 11....1. Vertical blank set-clear
     WSYNC,  // 02 - <strobe> Wait for leading edge of horizontal blank
     RSYNC,  // 03 - <strobe> Reset horizontal sync counter
-    NUSIZ0, // 04 - ..11.111 Number-size player-missile 0
-    NUSIZ1, // 05 - ..11.111 Number-size player-missile 1
+    NUSIZ0, // 04 - ..111111 Number-size player-missile 0
+    NUSIZ1, // 05 - ..111111 Number-size player-missile 1
     COLUP0, // 06 - 1111111. Color-lum player 0 and missile 0
     COLUP1, // 07 - 1111111. Color-lum player 1 and missile 1
     COLUPF, // 08 - 1111111. Color-lum playfield and ball
