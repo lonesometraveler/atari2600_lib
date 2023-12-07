@@ -30,7 +30,6 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=release-with-debug",
                     "--example=sdl",
                     "--package=atari2600_lib",
                     "--features=sdl2"
@@ -40,7 +39,9 @@
                     "kind": "example"
                 }
             },
-            "args": [],
+            "args": [
+                "rom/smiley.bin"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
