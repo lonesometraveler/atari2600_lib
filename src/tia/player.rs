@@ -75,7 +75,7 @@ impl Player {
 
 impl Graphic for Player {
     // Player sprites start 1 tick later than other sprites
-    const INIT_DELAY: isize = 5;
+    const INIT_DELAY: isize = 7;
     // How many bits to a graphic
     const GRAPHIC_SIZE: isize = 8;
 

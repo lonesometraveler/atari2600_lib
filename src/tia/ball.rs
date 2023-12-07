@@ -65,7 +65,7 @@ impl Ball {
 }
 
 impl Graphic for Ball {
-    const INIT_DELAY: isize = 4;
+    const INIT_DELAY: isize = 6;
     const GRAPHIC_SIZE: isize = 1;
 
     fn size(&self) -> usize {
