@@ -392,29 +392,6 @@ impl TIA {
         self.m1.clock();
         self.bl.clock();
     }
-
-    // TODO: https://github.com/stella-emu/stella/blob/8fe2adf28affc0477ee91689edef3b90168cd3ce/src/emucore/tia/TIA.cxx#L1519
-    // fn apply_rsync(&mut self) {
-    //     const H_BLANK_CLOCKS: u8 = 68;
-    //     const H_CLOCKS: u8 = 228;
-    //     const H_PIXEL: u8 = 160;
-    //     let x = if self.ctr.value() > H_BLANK_CLOCKS {
-    //         self.ctr.value() - H_BLANK_CLOCKS
-    //     } else {
-    //         0
-    //     };
-
-    //     self.myHctrDelta = H_CLOCKS - 3 - self.ctr.value();
-
-    //     if self.myFrameManager.is_rendering() {
-    //         let start_index = (self.myFrameManager.get_y() * H_PIXEL + x) as usize;
-    //         let end_index = start_index + (H_PIXEL - x) as usize;
-
-    //         self.myBackBuffer[start_index..end_index].fill(0);
-    //     }
-
-    //     self.ctr.reset_to(H_CLOCKS - 3);
-    // }
 }
 
 impl TIA {
