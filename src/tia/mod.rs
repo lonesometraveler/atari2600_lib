@@ -1,3 +1,4 @@
+mod audio;
 mod ball;
 mod color;
 mod counter;
