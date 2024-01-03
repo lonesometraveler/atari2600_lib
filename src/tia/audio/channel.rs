@@ -122,7 +122,7 @@ impl Channel {
 
 // changing the value of an AUDx registers causes some side effect.
 impl Channel {
-    fn react_aud_cx(&mut self) {
+    pub fn react_aud_cx(&mut self) {
         self.registers_changed = true;
     }
 }
