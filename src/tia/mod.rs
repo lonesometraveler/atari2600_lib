@@ -12,6 +12,8 @@ use crate::memory::{TiaReadAddress, TiaWriteAddress};
 use image::Rgba;
 use log::debug;
 use std::{cell::RefCell, rc::Rc};
+
+use self::audio::Audio;
 use {
     ball::Ball,
     color::Colors,
@@ -126,6 +128,8 @@ pub struct TIA {
     // One scanline of pixels to be rendered. It's up to the calling code to call
     // `get_scanline_pixels` at the end of each scanline.
     pixels: [Rgba<u8>; LINE_LENGTH],
+
+    audio: Audio,
 }
 
 impl Default for TIA {
@@ -174,6 +178,8 @@ impl Default for TIA {
             p1,
 
             pixels: [Rgba([0, 0, 0, 0]); LINE_LENGTH],
+
+            audio: Audio::new(),
         }
     }
 }
@@ -317,6 +323,8 @@ impl TIA {
             if let Ok(signal) = self.ctr.value().try_into() {
                 self.handle_video_signal(signal);
             }
+
+            self.audio.step();
         }
     }
 
@@ -501,22 +509,34 @@ impl TIA {
             RESM1 => self.m1.reset(),
             RESBL => self.bl.reset(),
             AUDC0 => {
-                debug!("AUDC0: {}", val)
+                debug!("AUDC0: {}", val);
+                self.audio.channel0.registers.control = val & 0x0f;
+                self.audio.channel0.react_aud_cx();
             }
             AUDC1 => {
-                debug!("AUDC1: {}", val)
+                debug!("AUDC1: {}", val);
+                self.audio.channel1.registers.control = val & 0x0f;
+                self.audio.channel1.react_aud_cx();
             }
             AUDF0 => {
-                debug!("AUDF0: {}", val)
+                debug!("AUDF0: {}", val);
+                self.audio.channel0.registers.freq = val & 0x1f;
+                self.audio.channel0.react_aud_cx();
             }
             AUDF1 => {
-                debug!("AUDF1: {}", val)
+                debug!("AUDF1: {}", val);
+                self.audio.channel1.registers.freq = val & 0x1f;
+                self.audio.channel1.react_aud_cx();
             }
             AUDV0 => {
-                debug!("AUDV0: {}", val)
+                debug!("AUDV0: {}", val);
+                self.audio.channel0.registers.volume = val & 0x0f;
+                self.audio.channel0.react_aud_cx();
             }
             AUDV1 => {
-                debug!("AUDV1: {}", val)
+                debug!("AUDV1: {}", val);
+                self.audio.channel1.registers.volume = val & 0x0f;
+                self.audio.channel1.react_aud_cx();
             }
             GRP0 => {
                 self.p0.set_graphic(val);
