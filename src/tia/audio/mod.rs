@@ -25,8 +25,8 @@ pub struct Audio {
     //
     // "There are two audio circuits for generating sound. They are identical but
     // completely independent and can be operated simultaneously [...]"
-    channel0: Channel,
-    channel1: Channel,
+    pub channel0: Channel,
+    pub channel1: Channel,
 
     // the volume output for each channel
     vol0: u8,
@@ -108,41 +108,3 @@ impl Audio {
         }
     }
 }
-
-// impl Audio {
-//     // ReadMemRegisters checks the TIA memory for changes to registers that are
-//     // interesting to the audio sub-system
-//     //
-//     // Returns true if memory.ChipData has not been serviced.
-//     fn read_mem_registers(&mut self, data: chipbus::ChangedRegister) -> bool {
-//         match data.register {
-//             cpubus::AUDC0 => {
-//                 self.channel0.registers.control = data.value & 0x0f;
-//                 self.channel0.react_aud_cx();
-//             }
-//             cpubus::AUDC1 => {
-//                 self.channel1.registers.control = data.value & 0x0f;
-//                 self.channel1.react_aud_cx();
-//             }
-//             cpubus::AUDF0 => {
-//                 self.channel0.registers.freq = data.value & 0x1f;
-//                 self.channel0.react_aud_cx();
-//             }
-//             cpubus::AUDF1 => {
-//                 self.channel1.registers.freq = data.value & 0x1f;
-//                 self.channel1.react_aud_cx();
-//             }
-//             cpubus::AUDV0 => {
-//                 self.channel0.registers.volume = data.value & 0x0f;
-//                 self.channel0.react_aud_cx();
-//             }
-//             cpubus::AUDV1 => {
-//                 self.channel1.registers.volume = data.value & 0x0f;
-//                 self.channel1.react_aud_cx();
-//             }
-//             _ => return true,
-//         }
-
-//         false
-//     }
-// }
