@@ -1,13 +1,8 @@
 // https://github.com/JetSetIlly/Gopher2600/blob/master/hardware/tia/audio/audio.go
-
 mod channel;
 mod register;
 
 use channel::Channel;
-
-// SampleFreq represents the number of samples generated per second. This is
-// the 30Khz reference frequency desribed in the Stella Programmer's Guide.
-const SAMPLE_FREQ: i32 = 31400;
 
 // Audio is the implementation of the TIA audio sub-system, using Ron Fries'
 // method. Reference source code here:
@@ -58,6 +53,15 @@ impl Audio {
     // 30Khz clock.
     pub fn step(&mut self) -> bool {
         self.registers_changed = false;
+
+        // it's impossible for both channels to have changed in a single video cycle
+        if self.channel0.registers_changed {
+            self.channel0.registers_changed = false;
+            self.registers_changed = true;
+        } else if self.channel1.registers_changed {
+            self.channel1.registers_changed = false;
+            self.registers_changed = true;
+        }
 
         self.clock_228 += 1;
         if self.clock_228 >= 228 {
