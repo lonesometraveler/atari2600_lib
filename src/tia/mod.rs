@@ -10,7 +10,6 @@ mod playfield;
 
 use crate::memory::{TiaReadAddress, TiaWriteAddress};
 use image::Rgba;
-use log::{debug, info};
 use std::{cell::RefCell, rc::Rc};
 
 use self::audio::Audio;
@@ -191,7 +190,7 @@ impl TIA {
             audc: reg.control,
             audf: reg.freq,
             audv: reg.volume,
-            duration_seconds: 0.05,
+            duration_seconds: 0.1,
         };
         atari2600_audio::generate_tone(aud)
     }
@@ -531,7 +530,6 @@ impl TIA {
                 self.audio.channel0.react_aud_cx();
             }
             AUDC1 => {
-                debug!("AUDC1: {}", val);
                 self.audio.channel1.registers.control = val & 0x0f;
                 self.audio.channel1.react_aud_cx();
             }
@@ -540,7 +538,6 @@ impl TIA {
                 self.audio.channel0.react_aud_cx();
             }
             AUDF1 => {
-                debug!("AUDF1: {}", val);
                 self.audio.channel1.registers.freq = val & 0x1f;
                 self.audio.channel1.react_aud_cx();
             }
@@ -549,7 +546,6 @@ impl TIA {
                 self.audio.channel0.react_aud_cx();
             }
             AUDV1 => {
-                debug!("AUDV1: {}", val);
                 self.audio.channel1.registers.volume = val & 0x0f;
                 self.audio.channel1.react_aud_cx();
             }
