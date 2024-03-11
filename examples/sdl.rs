@@ -1,6 +1,6 @@
 use atari2600_audio::{
     sdl_audio::{AudioPlayer, AudioSubsystemSendWrapper},
-    Aud, SAMPLE_FREQ,
+    SAMPLE_FREQ,
 };
 use atari2600_lib::{EmulatorCore, KeyEvent};
 use image::Rgba;
