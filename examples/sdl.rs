@@ -1,6 +1,11 @@
+use atari2600_audio::{
+    sdl_audio::{AudioPlayer, AudioSubsystemSendWrapper},
+    SAMPLE_FREQ,
+};
 use atari2600_lib::{EmulatorCore, KeyEvent};
 use image::Rgba;
-use log::info;
+use log::{error, info};
+use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -9,6 +14,7 @@ use sdl2::video::{Window, WindowContext};
 use sdl2::{EventPump, VideoSubsystem};
 use std::env;
 use std::error::Error;
+use std::sync::mpsc::channel;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -30,6 +36,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let audio_subsystem = sdl_context.audio()?;
+
+    // Specify the desired audio format
+    let desired_spec = AudioSpecDesired {
+        freq: Some(SAMPLE_FREQ as i32),
+        channels: Some(1), // Mono
+        samples: None,     // Default sample size
+    };
+
+    // Messaging channels for tone
+    let (tx, rx) = channel::<Vec<f32>>();
+
+    let audio_player = AudioPlayer::new(
+        AudioSubsystemSendWrapper(audio_subsystem.clone()),
+        desired_spec,
+        rx,
+    );
+    thread::spawn(move || audio_player.run());
 
     let (mut canvas, texture_creator) =
         create_sdl_window_and_canvas(video_subsystem, width, height)?;
@@ -49,6 +73,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         render_frame(&mut canvas, &mut texture, emulator_core.frame_pixels())?;
 
         handle_events(&mut emulator_core, &mut event_pump);
+
+        // Audio
+        if emulator_core.should_play_audio() {
+            let tone = emulator_core.get_tone();
+            if let Err(e) = tx.send(tone) {
+                error!("Error sending tone: {}", e);
+            };
+        }
 
         if let Some(delay) = FRAME_DURATION.checked_sub(fps_start.elapsed()) {
             thread::sleep(delay);
