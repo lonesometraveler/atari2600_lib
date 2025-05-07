@@ -1,5 +1,7 @@
+use crate::addressing_modes::AddressingMode;
 use crate::bus::Bus;
-use crate::opcode::{AddressingMode, Instruction, Opcode, OPCODES};
+use crate::instructions::Instruction;
+use crate::opcode::{Opcode, OPCODES};
 use log::{debug, info};
 use std::{env, process};
 
@@ -275,24 +277,27 @@ impl CPU6507 {
         let opcode = self.read(self.pc);
 
         // Get opcode information from the lookup table
-        let op = &OPCODES[opcode as usize];
-
-        // Destructure Opcode for better readability
-        let Opcode(inst, addr_mode, cycles, extra_cycles) = op;
+        let op = OPCODES[opcode as usize];
 
         // Get address and check for page crossing
-        let (addr, page_crossed) = self.get_data(addr_mode);
+        let (addr, page_crossed) = self.get_data(&op.addressing_mode);
 
         // Update program counter
-        self.pc += addr_mode.n_bytes() as u16;
+        self.pc += op.addressing_mode.n_bytes() as u16;
 
         // Update CPU state
-        self.current_instruction = Some(*inst);
+        self.current_instruction = Some(op.instruction);
         self.current_addr = addr;
-        self.current_addr_mode = *addr_mode;
+        self.current_addr_mode = op.addressing_mode;
 
         // Calculate total cycles, considering page crossing
-        cycles + if page_crossed { extra_cycles } else { &0 }
+        let total_cycles = if page_crossed {
+            op.cycles + op.extra_cycles
+        } else {
+            op.cycles
+        };
+
+        total_cycles
     }
 
     fn execute(&mut self) {

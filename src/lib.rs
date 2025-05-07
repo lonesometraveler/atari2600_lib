@@ -1,5 +1,7 @@
+pub mod addressing_modes;
 mod bus;
 mod cpu6507;
+pub mod instructions;
 #[allow(clippy::upper_case_acronyms)]
 pub(crate) mod memory;
 mod opcode;
