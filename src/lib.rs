@@ -16,17 +16,30 @@ type SharedTIA = Rc<RefCell<TIA>>;
 // type SharedDebugger = Rc<RefCell<Debugger>>;
 
 const CLOCKS_PER_SCANLINE: usize = 228;
+const SCREEN_WIDTH: usize = 160;
+const SCREEN_HEIGHT: usize = 192;
 
 pub struct EmulatorCore {
     cpu: CPU6507,
     tia: SharedTIA,
     riot: SharedRIOT,
-    frame_pixels: [[Rgba<u8>; 160]; 192],
+    frame_pixels: [[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT],
 }
 
 pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn Error>> {
     let (riot, tia, cpu) = initialize_components(rom_path)?;
-    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); 160]; 192];
+    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
+    Ok(EmulatorCore {
+        cpu,
+        tia,
+        riot,
+        frame_pixels,
+    })
+}
+
+pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<dyn Error>> {
+    let (riot, tia, cpu) = init_with_rom_data(rom_data.to_vec())?;
+    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
     Ok(EmulatorCore {
         cpu,
         tia,
@@ -36,7 +49,7 @@ pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn
 }
 
 impl EmulatorCore {
-    pub fn frame_pixels(&self) -> &[[Rgba<u8>; 160]; 192] {
+    pub fn frame_pixels(&self) -> &[[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT] {
         &self.frame_pixels
     }
 
@@ -146,6 +159,12 @@ fn initialize_components<P: AsRef<str>>(
     let bytes = fh.read_to_end(&mut rom).expect("unable to read rom data");
     info!("ROM: {} ({} bytes)", rom_path.as_ref(), bytes);
 
+    init_with_rom_data(rom)
+}
+
+fn init_with_rom_data(
+    rom_data: Vec<u8>,
+) -> Result<(SharedRIOT, SharedTIA, CPU6507), Box<dyn Error>> {
     info!("RIOT: init");
     let riot = Rc::new(RefCell::new(RIOT::new()));
     riot.borrow_mut().up(false);
@@ -159,7 +178,7 @@ fn initialize_components<P: AsRef<str>>(
     let tia = Rc::new(RefCell::new(TIA::new()));
     tia.borrow_mut().joystick_fire(false);
 
-    let bus = AtariBus::new(tia.clone(), riot.clone(), rom);
+    let bus = AtariBus::new(tia.clone(), riot.clone(), rom_data);
 
     info!("CPU: init");
     let mut cpu = CPU6507::new(Box::new(bus));
