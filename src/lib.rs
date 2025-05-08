@@ -50,6 +50,17 @@ pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<
     })
 }
 
+/// Audio related functions
+impl EmulatorCore {
+    pub fn should_play_audio(&self) -> bool {
+        self.tia.borrow().should_play()
+    }
+
+    pub fn get_tone(&mut self) -> Vec<f32> {
+        self.tia.borrow_mut().get_tone()
+    }
+}
+
 impl EmulatorCore {
     pub fn frame_pixels(&self) -> &[[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT] {
         &self.frame_pixels
