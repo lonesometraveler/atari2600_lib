@@ -19,18 +19,18 @@ type SharedTIA = Rc<RefCell<TIA>>;
 
 const CLOCKS_PER_SCANLINE: usize = 228;
 const SCREEN_WIDTH: usize = 160;
-const SCREEN_HEIGHT: usize = 192;
+const SCREEN_HEIGHT: usize = 197;
 
 pub struct EmulatorCore {
     cpu: CPU6507,
     tia: SharedTIA,
     riot: SharedRIOT,
-    frame_pixels: [[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT],
+    frame_pixels: Vec<Rgba<u8>>,
 }
 
 pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn Error>> {
     let (riot, tia, cpu) = initialize_components(rom_path)?;
-    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
+    let frame_pixels = vec![Rgba([0, 0, 0, 0xff]); SCREEN_WIDTH * SCREEN_HEIGHT];
     Ok(EmulatorCore {
         cpu,
         tia,
@@ -41,7 +41,7 @@ pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn
 
 pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<dyn Error>> {
     let (riot, tia, cpu) = init_with_rom_data(rom_data.to_vec())?;
-    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
+    let frame_pixels = vec![Rgba([0, 0, 0, 0xff]); SCREEN_WIDTH * SCREEN_HEIGHT];
     Ok(EmulatorCore {
         cpu,
         tia,
@@ -51,7 +51,7 @@ pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<
 }
 
 impl EmulatorCore {
-    pub fn frame_pixels(&self) -> &[[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT] {
+    pub fn frame_pixels(&self) -> &Vec<Rgba<u8>> {
         &self.frame_pixels
     }
 
@@ -66,7 +66,7 @@ impl EmulatorCore {
             self.scanline();
         }
 
-        for i in 0..192 {
+        for i in 0..SCREEN_HEIGHT {
             if self.tia.borrow().in_vblank() {
                 break;
             }
@@ -74,7 +74,8 @@ impl EmulatorCore {
 
             let borrowed_tia = self.tia.borrow();
             let array: &[Rgba<u8>] = borrowed_tia.get_scanline_pixels();
-            self.frame_pixels[i] = array.try_into().expect("Conversion failed");
+            let offset = i * SCREEN_WIDTH;
+            self.frame_pixels[offset..offset + SCREEN_WIDTH].copy_from_slice(array);
         }
 
         // Overscan
