@@ -19,7 +19,7 @@ type SharedTIA = Rc<RefCell<TIA>>;
 
 const CLOCKS_PER_SCANLINE: usize = 228;
 const SCREEN_WIDTH: usize = 160;
-const SCREEN_HEIGHT: usize = 192;
+const SCREEN_HEIGHT: usize = 197;
 
 pub struct EmulatorCore {
     cpu: CPU6507,
@@ -66,7 +66,7 @@ impl EmulatorCore {
             self.scanline();
         }
 
-        for i in 0..192 {
+        for i in 0..SCREEN_HEIGHT {
             if self.tia.borrow().in_vblank() {
                 break;
             }
