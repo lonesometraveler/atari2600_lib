@@ -1,3 +1,4 @@
+#![no_std]
 pub mod addressing_modes;
 mod bus;
 mod cpu6507;
@@ -9,9 +10,13 @@ mod riot;
 mod tia;
 
 use crate::{bus::AtariBus, cpu6507::CPU6507, riot::RIOT, tia::TIA};
+use core::{cell::RefCell, error::Error};
+use heapless::Vec;
 use image::Rgba;
 use log::info;
-use std::{cell::RefCell, error::Error, fs::File, io::Read, rc::Rc};
+
+extern crate alloc;
+use alloc::{boxed::Box, rc::Rc};
 
 type SharedRIOT = Rc<RefCell<RIOT>>;
 type SharedTIA = Rc<RefCell<TIA>>;
@@ -28,19 +33,12 @@ pub struct EmulatorCore {
     frame_pixels: [[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT],
 }
 
-pub fn init_emulator<P: AsRef<str>>(rom_path: P) -> Result<EmulatorCore, Box<dyn Error>> {
-    let (riot, tia, cpu) = initialize_components(rom_path)?;
-    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
-    Ok(EmulatorCore {
-        cpu,
-        tia,
-        riot,
-        frame_pixels,
-    })
-}
-
 pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<dyn Error>> {
-    let (riot, tia, cpu) = init_with_rom_data(rom_data.to_vec())?;
+    let rom = match Vec::from_slice(rom_data) {
+        Ok(rom) => rom,
+        Err(_) => return Err("Failed to load ROM".into()),
+    };
+    let (riot, tia, cpu) = init_with_rom_data(rom)?;
     let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
     Ok(EmulatorCore {
         cpu,
@@ -152,20 +150,8 @@ impl KeyEvent for EmulatorCore {
     }
 }
 
-fn initialize_components<P: AsRef<str>>(
-    rom_path: P,
-) -> Result<(SharedRIOT, SharedTIA, CPU6507), Box<dyn Error>> {
-    let mut fh = File::open(rom_path.as_ref()).expect("unable to open rom");
-
-    let mut rom = vec![];
-    let bytes = fh.read_to_end(&mut rom).expect("unable to read rom data");
-    info!("ROM: {} ({} bytes)", rom_path.as_ref(), bytes);
-
-    init_with_rom_data(rom)
-}
-
 fn init_with_rom_data(
-    rom_data: Vec<u8>,
+    rom_data: Vec<u8, 4096>,
 ) -> Result<(SharedRIOT, SharedTIA, CPU6507), Box<dyn Error>> {
     info!("RIOT: init");
     let riot = Rc::new(RefCell::new(RIOT::new()));

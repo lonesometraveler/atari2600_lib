@@ -12,6 +12,7 @@ lazy_static = "1.3.0"
 image = { version = "0.24.7" }
 modular-bitfield = "0.11.2"
 sdl2 = { version = "0.36", optional = true }
+heapless = "0.8.0"
 
 [[example]]
 name = "sdl"

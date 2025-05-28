@@ -1,30 +1,23 @@
 use crate::memory::{MemoryMirrors, Operation};
 use crate::{SharedRIOT, SharedTIA};
+use heapless::Vec;
 use log::error;
-use std::fs::File;
-use std::io;
 
 pub trait Bus {
     fn read(&mut self, _address: u16) -> u8 {
         0
     }
     fn write(&mut self, _address: u16, _val: u8) {}
-    fn save(&self, _output: &mut File) -> io::Result<()> {
-        Ok(())
-    }
-    fn load(&mut self, _input: &mut File) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 pub(crate) struct AtariBus {
-    rom: Vec<u8>,
+    rom: Vec<u8, 4096>,
     tia: SharedTIA,
     riot: SharedRIOT,
 }
 
 impl AtariBus {
-    pub fn new(tia: SharedTIA, riot: SharedRIOT, rom: Vec<u8>) -> Self {
+    pub fn new(tia: SharedTIA, riot: SharedRIOT, rom: Vec<u8, 4096>) -> Self {
         Self { rom, tia, riot }
     }
 }

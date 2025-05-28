@@ -3,8 +3,8 @@ use crate::tia::counter::Counter;
 
 #[allow(dead_code)]
 mod pf_data {
+    use core::array;
     use modular_bitfield::prelude::*;
-    use std::array;
     // 20-bit playfield
     // .... | .... .... | .... ....
     // PF0  |    PF1    |    PF2

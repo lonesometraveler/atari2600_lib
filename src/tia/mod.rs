@@ -8,9 +8,10 @@ mod player;
 mod playfield;
 
 use crate::memory::{TiaReadAddress, TiaWriteAddress};
+use alloc::rc::Rc;
+use core::cell::RefCell;
 use image::Rgba;
 use log::debug;
-use std::{cell::RefCell, rc::Rc};
 use {
     ball::Ball,
     color::Colors,

@@ -1,20 +1,20 @@
 use crate::addressing_modes::AddressingMode;
 use crate::bus::Bus;
 use crate::instructions::Instruction;
-use crate::opcode::{Opcode, OPCODES};
+use crate::opcode::OPCODES;
+use alloc::boxed::Box;
 use log::{debug, info};
-use std::{env, process};
 
 const STACK_INIT: u8 = 0xff;
 const LOW_NIBBLE_MASK: u16 = 0x0F;
 const HIGH_NIBBLE_MASK: u16 = 0xF0;
 
-lazy_static::lazy_static! {
-    static ref CPU6507_DEBUG: bool = match env::var("CPU6507_DEBUG") {
-        Ok(val) => !val.is_empty() && val != "0",
-        Err(_) => false,
-    };
-}
+// lazy_static::lazy_static! {
+//     static ref CPU6507_DEBUG: bool = match env::var("CPU6507_DEBUG") {
+//         Ok(val) => !val.is_empty() && val != "0",
+//         Err(_) => false,
+//     };
+// }
 
 fn pages_differ(addr_a: u16, addr_b: u16) -> bool {
     (addr_a & 0xff00) != (addr_b & 0xff00)
@@ -993,6 +993,6 @@ impl CPU6507 {
     }
 
     fn jam(&mut self) {
-        process::exit(0);
+        // process::exit(0);
     }
 }
