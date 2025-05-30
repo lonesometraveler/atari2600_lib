@@ -11,8 +11,8 @@ mod tia;
 
 use crate::{bus::AtariBus, cpu6507::CPU6507, riot::RIOT, tia::TIA};
 use core::{cell::RefCell, error::Error};
+use embedded_graphics::pixelcolor::Rgb888;
 use heapless::Vec;
-use image::Rgba;
 use log::info;
 
 extern crate alloc;
@@ -30,7 +30,7 @@ pub struct EmulatorCore {
     cpu: CPU6507,
     tia: SharedTIA,
     riot: SharedRIOT,
-    frame_pixels: [[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT],
+    frame_pixels: [[Rgb888; SCREEN_WIDTH]; SCREEN_HEIGHT],
 }
 
 pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<dyn Error>> {
@@ -39,7 +39,7 @@ pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<
         Err(_) => return Err("Failed to load ROM".into()),
     };
     let (riot, tia, cpu) = init_with_rom_data(rom)?;
-    let frame_pixels = [[Rgba::<u8>([0, 0, 0, 0xff]); SCREEN_WIDTH]; SCREEN_HEIGHT];
+    let frame_pixels = [[Rgb888::new(0, 0, 0); SCREEN_WIDTH]; SCREEN_HEIGHT];
     Ok(EmulatorCore {
         cpu,
         tia,
@@ -49,7 +49,7 @@ pub fn init_emulator_with_rom_data(rom_data: &[u8]) -> Result<EmulatorCore, Box<
 }
 
 impl EmulatorCore {
-    pub fn frame_pixels(&self) -> &[[Rgba<u8>; SCREEN_WIDTH]; SCREEN_HEIGHT] {
+    pub fn frame_pixels(&self) -> &[[Rgb888; SCREEN_WIDTH]; SCREEN_HEIGHT] {
         &self.frame_pixels
     }
 
@@ -71,7 +71,7 @@ impl EmulatorCore {
             self.scanline();
 
             let borrowed_tia = self.tia.borrow();
-            let array: &[Rgba<u8>] = borrowed_tia.get_scanline_pixels();
+            let array: &[Rgb888] = borrowed_tia.get_scanline_pixels();
             self.frame_pixels[i] = array.try_into().expect("Conversion failed");
         }
 

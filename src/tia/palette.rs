@@ -1,29 +1,28 @@
 // http://www.qotile.net/minidig/docs/tia_color.html
 
 use alloc::vec;
+use embedded_graphics::pixelcolor::Rgb888;
 use heapless::Vec;
-use image::Rgba;
 
 pub const DEFAULT_COLOR: usize = 0;
 
 lazy_static::lazy_static! {
-        pub static ref NTSC_PALETTE: Vec<Rgba<u8>, 256> = ntsc_palette();
+        pub static ref NTSC_PALETTE: Vec<Rgb888, 256> = ntsc_palette();
 }
 
 /// A color palette that maps 8-bit color codes (indexes) to RGBA pixels.
-pub(crate) type Palette = Vec<Rgba<u8>, 256>;
+pub(crate) type Palette = Vec<Rgb888, 256>;
 
 /// Creates a palette of RGBA colors out of an `u32` array slice. Each number
 /// represents a 3-byte RGB color, where each channel is represented by 8 bits.
 pub(crate) fn create_palette(colors: &[u32]) -> Palette {
     let mut palette = Palette::new();
     for color in colors {
-        let color_rgba = Rgba([
+        let color_rgba = Rgb888::new(
             ((color >> 16) & 0xFF) as u8,
             ((color >> 8) & 0xFF) as u8,
             (color & 0xFF) as u8,
-            0xFF,
-        ]);
+        );
         let _ = palette.push(color_rgba);
     }
     palette
